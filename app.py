@@ -14,7 +14,7 @@ TennisTrackerStack(
     "TennisTracker",
     env=cdk.Environment(
         account=os.environ.get("CDK_DEFAULT_ACCOUNT"),
-        region=os.environ.get("CDK_DEFAULT_REGION", "us-east-2"),
+        region="us-east-2",  # fixed: the CDK CLI defaults to us-east-1 without credentials
     ),
     termination_protection=True,
     description="iPhone-first tennis tracker: WTN history, matches, stats and reminders",

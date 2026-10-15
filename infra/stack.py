@@ -5,7 +5,7 @@ import re
 from aws_cdk import CfnOutput, DefaultStackSynthesizer, Duration, RemovalPolicy, Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_iam as iam
-from cdk_nag import NagPackSuppression, NagSuppressions
+from cdk_nag import NagPackSuppression, NagSuppressions, RegexAppliesTo
 from constructs import Construct
 
 GITHUB = "token.actions.githubusercontent.com"
@@ -70,10 +70,8 @@ class TennisTrackerStack(Stack):
                 NagPackSuppression(
                     id="AwsSolutions-IAM5",
                     reason="Only sts:AssumeRole on this account's CDK bootstrap roles",
-                    applies_to=[  # partition is a literal or a token, depending on feature flags
-                        f"Resource::arn:{partition}:iam::{self.account}:role/cdk-{qualifier}-*-{self.account}-{self.region}"
-                        for partition in ("<AWS::Partition>", "aws")
-                    ],
+                    # Partition and account render as literals or tokens depending on flags and credentials.
+                    applies_to=[RegexAppliesTo(regex=rf"/^Resource::arn:.+:iam::.+:role\/cdk-{qualifier}-\*-.+$/g")],
                 )
             ],
             apply_to_children=True,

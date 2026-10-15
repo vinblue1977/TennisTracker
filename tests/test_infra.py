@@ -15,9 +15,9 @@ REPO = "test-owner@1/test-repo@2"
 CDK_CONTEXT = {k: v for k, v in json.loads(Path("cdk.json").read_text())["context"].items() if k.startswith("@")}
 
 
-def _stack(context: dict | None = None) -> TennisTrackerStack:
+def _stack(context: dict | None = None, account: str | None = "123456789012") -> TennisTrackerStack:
     app = cdk.App(context=CDK_CONTEXT | ({"githubRepo": REPO} if context is None else context))
-    stack = TennisTrackerStack(app, "TennisTracker", env=cdk.Environment(account="123456789012", region="us-east-2"))
+    stack = TennisTrackerStack(app, "TennisTracker", env=cdk.Environment(account=account, region="us-east-2"))
     cdk.Aspects.of(app).add(AwsSolutionsChecks())
     return stack
 
@@ -28,8 +28,9 @@ def test_synthesizes_in_us_east_2() -> None:
     assert stack.region == "us-east-2"
 
 
-def test_no_cdk_nag_findings() -> None:
-    stack = _stack()
+@pytest.mark.parametrize("account", ["123456789012", None])  # None: CI synth without AWS credentials
+def test_no_cdk_nag_findings(account: str | None) -> None:
+    stack = _stack(account=account)
     Template.from_stack(stack)  # runs the aspects
     annotations = Annotations.from_stack(stack)
     assert annotations.find_error("*", Match.string_like_regexp("AwsSolutions-.*")) == []
