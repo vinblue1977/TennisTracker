@@ -26,10 +26,11 @@ fi
 # Names from the PII_DENYLIST secret (comma-separated, never printed).
 if [ -n "${PII_DENYLIST:-}" ]; then
   IFS=',' read -r -a words <<<"$PII_DENYLIST"
+  history="$(git log --format='%an %ae %cn %ce %B')"  # read once: grep -q on a pipe can SIGPIPE git under pipefail
   for word in "${words[@]}"; do
     word="$(echo "$word" | xargs)"
     [ -z "$word" ] && continue
-    if git grep -qiwF -- "$word" -- ':!*package-lock.json' || git log --format='%an %ae %cn %ce %B' | grep -qiwF -- "$word"; then
+    if git grep -qiwF -- "$word" -- ':!*package-lock.json' || grep -qiwF -- "$word" <<<"$history"; then
       echo "::error::A word from PII_DENYLIST appears in tracked files or commit history (not printed, to keep it private)."
       status=1
     fi
