@@ -1,7 +1,8 @@
 {
-  "include": ["infra", "app.py"],
+  "include": ["infra", "backend", "app.py"],
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.14",
-  "typeCheckingMode": "standard"
+  "typeCheckingMode": "standard",
+  "extraPaths": ["backend"]
 }

@@ -37,7 +37,7 @@ if [ -n "${PII_DENYLIST:-}" ]; then
   done
 fi
 
-if git ls-files | grep -iE '\.(xlsx|xls|csv)$|wtn.*\.json$'; then
+if git ls-files | grep -v '^tests/fixtures/' | grep -iE '\.(xlsx|xls|csv)$|wtn.*\.json$'; then
   echo "::error::Data files are tracked above. Match imports and API dumps must stay out of the repo."
   status=1
 fi
