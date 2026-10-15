@@ -1,28 +1,98 @@
-"""Infrastructure tests: the stack synthesizes and passes cdk-nag with no errors or warnings."""
+"""Infrastructure tests: the stack synthesizes, passes cdk-nag, and its table and deploy role are locked down."""
+
+import json
+from pathlib import Path
 
 import aws_cdk as cdk
+import pytest
 from aws_cdk.assertions import Annotations, Match, Template
 from cdk_nag import AwsSolutionsChecks
 
 from infra.stack import TennisTrackerStack
 
+REPO = "test-owner@1/test-repo@2"
+# The same feature flags as a real synth, so tests render the template the way a deploy does.
+CDK_CONTEXT = {k: v for k, v in json.loads(Path("cdk.json").read_text())["context"].items() if k.startswith("@")}
 
-def _stack() -> TennisTrackerStack:
-    app = cdk.App()
-    stack = TennisTrackerStack(app, "TennisTracker", env=cdk.Environment(account="123456789012", region="us-east-2"))
+
+def _stack(context: dict | None = None, account: str | None = "123456789012") -> TennisTrackerStack:
+    app = cdk.App(context=CDK_CONTEXT | ({"githubRepo": REPO} if context is None else context))
+    stack = TennisTrackerStack(app, "TennisTracker", env=cdk.Environment(account=account, region="us-east-2"))
     cdk.Aspects.of(app).add(AwsSolutionsChecks())
     return stack
 
 
 def test_synthesizes_in_us_east_2() -> None:
     stack = _stack()
-    Template.from_stack(stack)  # synthesizes without error
+    Template.from_stack(stack)
     assert stack.region == "us-east-2"
 
 
-def test_no_cdk_nag_findings() -> None:
-    stack = _stack()
+@pytest.mark.parametrize("account", ["123456789012", None])  # None: CI synth without AWS credentials
+def test_no_cdk_nag_findings(account: str | None) -> None:
+    stack = _stack(account=account)
     Template.from_stack(stack)  # runs the aspects
     annotations = Annotations.from_stack(stack)
     assert annotations.find_error("*", Match.string_like_regexp("AwsSolutions-.*")) == []
     assert annotations.find_warning("*", Match.string_like_regexp("AwsSolutions-.*")) == []
+
+
+def test_table_is_protected_and_on_demand() -> None:
+    template = Template.from_stack(_stack())
+    template.has_resource(
+        "AWS::DynamoDB::GlobalTable",
+        {
+            "DeletionPolicy": "Retain",
+            "Properties": Match.object_like(
+                {
+                    "BillingMode": "PAY_PER_REQUEST",
+                    "Replicas": [
+                        Match.object_like(
+                            {
+                                "DeletionProtectionEnabled": True,
+                                "PointInTimeRecoverySpecification": {"PointInTimeRecoveryEnabled": True},
+                            }
+                        )
+                    ],
+                }
+            ),
+        },
+    )
+
+
+def test_deploy_role_trusts_only_this_repo_production_environment() -> None:
+    template = Template.from_stack(_stack())
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {
+            "AssumeRolePolicyDocument": Match.object_like(
+                {
+                    "Statement": [
+                        Match.object_like(
+                            {
+                                "Action": "sts:AssumeRoleWithWebIdentity",
+                                "Condition": {
+                                    "StringEquals": {
+                                        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                                        "token.actions.githubusercontent.com:sub": f"repo:{REPO}:environment:production",
+                                    }
+                                },
+                            }
+                        )
+                    ]
+                }
+            )
+        },
+    )
+    # The provider is shared with another stack in the account, so this stack must not create one.
+    template.resource_count_is("Custom::AWSCDKOpenIdConnectProvider", 0)
+    template.resource_count_is("AWS::IAM::OIDCProvider", 0)
+
+
+def test_no_deploy_role_without_repo() -> None:
+    Template.from_stack(_stack({})).resource_count_is("AWS::IAM::Role", 0)
+
+
+def test_rejects_malformed_repo() -> None:
+    with pytest.raises(ValueError, match="githubRepo"):
+        _stack({"githubRepo": "not a repo"})

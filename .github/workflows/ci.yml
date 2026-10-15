@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # A push to main is always a merged PR (branch protection) that was up to date with main, so checks and
-# workflow-lint skip pushes. The deploy job (GitHub OIDC to AWS) is added once the deploy role exists.
+# workflow-lint skip pushes; the deploy re-runs only the audit, which catches advisories published since the PR.
 jobs:
   # Decides whether checks and workflow-lint run: always on schedule and manual runs; on a PR only if something
   # besides docs (docs/ or top-level Markdown) changed. GitHub counts a skipped required job as passed.
@@ -83,6 +83,8 @@ jobs:
           npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
       - name: Personal-data guard (public repo)
         run: make privacy
+        env:
+          PII_DENYLIST: ${{ secrets.PII_DENYLIST }}  # private names to block; never printed
       - name: Lint (ruff with Bandit security rules, pyright types)
         run: make lint
       - name: Unit and infrastructure tests
@@ -132,3 +134,78 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
         with:
           fail-on-severity: high
+
+  # Decides whether a push to main deploys: anything outside docs, Markdown, tests and CI config
+  # (except this workflow, which holds the deploy step).
+  changes:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 5
+    outputs:
+      deploy: ${{ steps.diff.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        run: |
+          # The whole push range; an unknown base (new branch, force push) deploys.
+          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"
+          else
+            changed="unknown-base"
+          fi
+          echo "$changed"
+          deployable="$(grep -Ev '^(docs/|\.github/|tests/|scripts/|LICENSE$|pyrightconfig\.json$)|\.md$' <<<"$changed" || true)"
+          if grep -qx '.github/workflows/ci.yml' <<<"$changed"; then deployable=yes; fi
+          echo "deploy=$([ -n "$deployable" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        env:
+          BEFORE: ${{ github.event.before }}
+
+  deploy:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 30
+    environment: production   # deployment branches: main only (repo settings)
+    permissions:
+      contents: read
+      id-token: write   # GitHub OIDC -> short-lived AWS credentials, no stored access keys
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm  # the pinned CDK CLI, keyed on package-lock.json
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+        with:
+          version: "0.12.19"
+          enable-cache: true
+          cache-dependency-glob: requirements*.txt
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
+      - name: Deploy
+        run: |
+          uv venv --seed --python "$(which python)" .venv
+          uv pip install --python .venv/bin/python -r requirements-dev.txt
+          make audit  # an advisory published since the PR stops the deploy (the PR already ran the tests)
+          npm ci --ignore-scripts --no-audit --no-fund  # the pinned CDK CLI (package-lock.json)
+          . .venv/bin/activate
+          npx --no-install cdk deploy --require-approval never --outputs-file cdk-outputs.json
+      - name: Smoke test
+        run: |
+          table="$(jq -er '.TennisTracker.TableName' cdk-outputs.json)"
+          status="$(aws dynamodb describe-table --table-name "$table" --query 'Table.TableStatus' --output text)"
+          echo "$table -> $status"
+          [ "$status" = ACTIVE ]
