@@ -37,13 +37,13 @@ def test_my_side_first(score: str, won: bool, expected: str) -> None:
 def test_ratings_are_oldest_first_with_the_starting_estimate() -> None:
     shuffled = {"data": {"wtnPast": list(reversed(PAYLOAD["data"]["wtnPast"]))}}
     ratings, _ = parse(shuffled, ME)
-    assert [r.date for r in ratings] == ["2010-01-01", "2025-08-04", "2026-05-04", "2026-05-11"]
+    assert [r.date for r in ratings] == ["2010-01-01", "2025-08-04", "2026-05-04", "2026-05-11", "2026-06-01"]
     assert ratings[0].value == 29.1
 
 
 def test_matches_are_deduplicated_newest_first_and_only_mine() -> None:
     _, matches = parse(PAYLOAD, ME)
-    assert [m.match_id for m in matches] == ["wtn:m-default", "wtn:m-loss", "wtn:m-upset"]
+    assert [m.match_id for m in matches] == ["wtn:m-abandoned", "wtn:m-singles", "wtn:m-default", "wtn:m-loss", "wtn:m-upset"]
 
 
 def test_upset_win_has_partner_opponents_and_gap() -> None:
@@ -115,3 +115,15 @@ def test_fetch_history_raises_on_network_errors(monkeypatch: pytest.MonkeyPatch)
 def test_fetch_history_requires_https() -> None:
     with pytest.raises(client.WtnApiError, match="https"):
         client.fetch_history(ME, "2010-01-01", "2026-10-16", endpoint="http://example.com/graphql")
+
+
+def test_singles_use_singles_ratings() -> None:
+    m = _matches()["wtn:m-singles"]
+    assert m.kind == "SINGLE" and [p.wtn for p in m.opponents] == [26.0]
+    assert m.upset_gap == 2.0  # 28.0 vs 26.0, singles ratings only
+    assert _matches()["wtn:m-upset"].kind == "DOUBLE"
+
+
+def test_no_winner_is_neither_win_nor_loss() -> None:
+    m = _matches()["wtn:m-abandoned"]
+    assert m.won is None and m.score == "6-4 2-1" and m.upset_gap is None

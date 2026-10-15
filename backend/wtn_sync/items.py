@@ -31,6 +31,7 @@ def match_item(user_id: str, m: Match) -> dict[str, Any]:
         "SK": f"MATCH#{m.date}#{m.match_id}",
         "source": "WTN",
         "event": m.event,
+        "kind": m.kind,
         "won": m.won,
         "score": m.score,
         "status": m.status,

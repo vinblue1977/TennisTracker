@@ -34,7 +34,8 @@ class Match:
     match_id: str
     date: str
     event: str
-    won: bool
+    kind: str  # SINGLE or DOUBLE
+    won: bool | None  # None: no winner recorded (e.g. abandoned)
     score: str  # your side first
     status: str | None
     partners: tuple[Player, ...]
@@ -42,9 +43,9 @@ class Match:
     upset_gap: float | None  # set only for upset wins
 
 
-def my_side_first(score: str, won: bool) -> str:
+def my_side_first(score: str, won: bool | None) -> str:
     """WTN writes scores winner first; flips each set (and tiebreak points) for a loss."""
-    if won:
+    if won is not False:
         return score
     parts = []
     for part in score.split():
@@ -78,12 +79,14 @@ def parse(payload: dict[str, Any], tennis_id: str) -> tuple[list[Rating], list[M
 
 
 def _match(raw: dict[str, Any], tennis_id: str) -> Match | None:
-    wtn = {w["personId"]: float(w["tennisNumber"]) for w in raw.get("worldTennisNumbers") or [] if w["type"] == "DOUBLE"}
+    # Singles or doubles from the slots per side (a slot may have no person, e.g. a default).
+    kind = "DOUBLE" if max((len(s["players"]) for s in raw["sides"]), default=0) > 1 else "SINGLE"
+    wtn = {w["personId"]: float(w["tennisNumber"]) for w in raw.get("worldTennisNumbers") or [] if w["type"] == kind}
     sides = {s["sideNumber"]: [p["person"] for p in s["players"] if p.get("person")] for s in raw["sides"]}
     mine = next((n for n, people in sides.items() if any(p.get("tennisID") == tennis_id for p in people)), None)
     if mine is None:
         return None  # not this player's match
-    won = raw["winningSide"] == mine
+    won = None if not raw.get("winningSide") else raw["winningSide"] == mine
 
     def player(p: dict[str, Any]) -> Player:
         name = f"{p.get('standardGivenName') or ''} {p.get('standardFamilyName') or ''}".strip()
@@ -101,6 +104,7 @@ def _match(raw: dict[str, Any], tennis_id: str) -> Match | None:
         match_id=f"wtn:{raw['id']}",
         date=raw["start"][:10],
         event=(raw.get("tournament") or {}).get("name") or "",
+        kind=kind,
         won=won,
         score=my_side_first((raw.get("score") or {}).get("scoreString") or "", won),
         status=raw.get("status"),
