@@ -1,10 +1,17 @@
-"""The Tennis Tracker stack: the GitHub deploy role and the app's DynamoDB table."""
+"""The Tennis Tracker stack: data table, daily WTN sync, alerts and the GitHub deploy role."""
 
 import re
 
 from aws_cdk import CfnOutput, DefaultStackSynthesizer, Duration, RemovalPolicy, Stack
+from aws_cdk import aws_cloudwatch_actions as cw_actions
 from aws_cdk import aws_dynamodb as dynamodb
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_logs as logs
+from aws_cdk import aws_sns as sns
+from aws_cdk import aws_sns_subscriptions as subs
 from cdk_nag import NagPackSuppression, NagSuppressions, RegexAppliesTo
 from constructs import Construct
 
@@ -28,9 +35,61 @@ class TennisTrackerStack(Stack):
         )
         CfnOutput(self, "TableName", value=self.table.table_name)
 
+        self._wtn_sync()
+
         github_repo: str = self.node.try_get_context("githubRepo") or ""
         if github_repo:
             self._github_deploy_role(github_repo)
+
+    def _wtn_sync(self) -> None:
+        """Daily WTN sync Lambda, with an email when it fails 3 days running or crashes."""
+        topic = sns.Topic(self, "AlertTopic", enforce_ssl=True)
+        alert_email: str = self.node.try_get_context("alertEmail") or ""
+        if alert_email:
+            topic.add_subscription(subs.EmailSubscription(alert_email))  # pyright: ignore[reportArgumentType]
+
+        fn = lambda_.Function(
+            self,
+            "WtnSync",
+            runtime=lambda_.Runtime.PYTHON_3_14,
+            architecture=lambda_.Architecture.ARM_64,
+            handler="wtn_sync.handler.handler",
+            code=lambda_.Code.from_asset("backend", exclude=["**/__pycache__"]),
+            memory_size=256,
+            timeout=Duration.seconds(60),
+            environment={"TABLE_NAME": self.table.table_name, "ALERT_TOPIC_ARN": topic.topic_arn},
+            log_group=logs.LogGroup(self, "WtnSyncLogs", retention=logs.RetentionDays.TWO_WEEKS),
+        )
+        self.table.grant_read_write_data(fn)
+        topic.grant_publish(fn)
+        # 11:00 UTC = 06:00 Chicago in summer (05:00 in winter).
+        target = targets.LambdaFunction(fn)  # pyright: ignore[reportArgumentType]
+        events.Rule(self, "WtnSyncDaily", schedule=events.Schedule.cron(minute="0", hour="11"), targets=[target])  # pyright: ignore[reportArgumentType]
+        fn.metric_errors(period=Duration.days(1)).create_alarm(
+            self, "WtnSyncErrors", threshold=1, evaluation_periods=1, alarm_description="WTN sync Lambda crashed"
+        ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
+        CfnOutput(self, "WtnSyncFunction", value=fn.function_name)
+
+        NagSuppressions.add_resource_suppressions(
+            topic,
+            [NagPackSuppression(id="AwsSolutions-SNS2", reason="Alerts hold no secrets; a customer-managed key costs $1/month")],
+        )
+        NagSuppressions.add_resource_suppressions(
+            fn,
+            [
+                NagPackSuppression(
+                    id="AwsSolutions-IAM4",
+                    reason="AWSLambdaBasicExecutionRole only allows writing this function's logs",
+                    applies_to=["Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
+                ),
+                NagPackSuppression(
+                    id="AwsSolutions-IAM5",
+                    reason="CDK's table grant includes its indexes",
+                    applies_to=[RegexAppliesTo(regex=r"/^Resource::<Table.+\.Arn>\/index\/\*$/g")],
+                ),
+            ],
+            apply_to_children=True,
+        )
 
     def _github_deploy_role(self, github_repo: str) -> None:
         """Role for GitHub Actions in this repo's production environment. Reuses the account's OIDC provider."""

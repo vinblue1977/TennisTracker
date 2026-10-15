@@ -90,7 +90,21 @@ def test_deploy_role_trusts_only_this_repo_production_environment() -> None:
 
 
 def test_no_deploy_role_without_repo() -> None:
-    Template.from_stack(_stack({})).resource_count_is("AWS::IAM::Role", 0)
+    web_identity = {
+        "AssumeRolePolicyDocument": Match.object_like(
+            {"Statement": [Match.object_like({"Action": "sts:AssumeRoleWithWebIdentity"})]}
+        )
+    }
+    Template.from_stack(_stack({})).resource_properties_count_is("AWS::IAM::Role", web_identity, 0)
+
+
+def test_wtn_sync_runs_daily_and_alerts_on_crash() -> None:
+    template = Template.from_stack(_stack({"alertEmail": "alerts@example.com"}))
+    template.has_resource_properties("AWS::Lambda::Function", {"Runtime": "python3.14", "Handler": "wtn_sync.handler.handler"})
+    template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 11 * * ? *)"})
+    template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": "Errors", "Threshold": 1})
+    template.has_resource_properties("AWS::SNS::Subscription", {"Protocol": "email", "Endpoint": "alerts@example.com"})
+    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 14})
 
 
 def test_rejects_malformed_repo() -> None:
