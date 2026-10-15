@@ -17,8 +17,19 @@ START_DATE = "2010-01-01"  # before any WTN rating
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])  # pyright: ignore[reportAttributeAccessIssue]
-    profiles = table.scan(FilterExpression=Attr("SK").eq("PROFILE") & Attr("tennisId").exists())["Items"]
-    return {"synced": [sync_user(table, p) for p in profiles]}
+    return {"synced": [sync_user(table, p) for p in profiles(table)]}
+
+
+def profiles(table: Any) -> list[dict[str, Any]]:
+    """All profiles with a TennisID; pages through the scan (each page reads at most 1 MB before filtering)."""
+    found: list[dict[str, Any]] = []
+    kwargs: dict[str, Any] = {"FilterExpression": Attr("SK").eq("PROFILE") & Attr("tennisId").exists()}
+    while True:
+        page = table.scan(**kwargs)
+        found += page["Items"]
+        if "LastEvaluatedKey" not in page:
+            return found
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
 
 
 def sync_user(table: Any, profile: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:

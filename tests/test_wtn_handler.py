@@ -86,3 +86,19 @@ def test_profiles_without_tennis_id_are_skipped(aws, monkeypatch: pytest.MonkeyP
     table.put_item(Item={"PK": "USER#other", "SK": "PROFILE"})
     monkeypatch.setattr(h, "fetch_history", lambda tid, start, end: PAYLOAD)
     assert [r["user"] for r in h.handler({}, None)["synced"]] == ["owner"]
+
+
+def test_profiles_pages_through_the_whole_scan() -> None:
+    class PagedTable:
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        def scan(self, **kwargs):
+            self.calls.append(kwargs)
+            if "ExclusiveStartKey" not in kwargs:
+                return {"Items": [{"PK": "USER#a"}], "LastEvaluatedKey": {"PK": "x", "SK": "y"}}
+            return {"Items": [{"PK": "USER#b"}]}
+
+    table = PagedTable()
+    assert [p["PK"] for p in h.profiles(table)] == ["USER#a", "USER#b"]
+    assert table.calls[1]["ExclusiveStartKey"] == {"PK": "x", "SK": "y"}
