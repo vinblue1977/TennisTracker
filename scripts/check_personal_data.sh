@@ -1,14 +1,39 @@
 #!/usr/bin/env bash
-# This repo is public: real players' data lives only in the app's private database. Fails if a tracked file
-# contains something shaped like an ITF TennisID (three capital letters and seven digits) or a data export.
+# Public repo: fails on personal data in tracked files or commit history.
 set -euo pipefail
 
 status=0
 
-# -w (whole words) rather than \b, which not every git grep regex engine supports.
+# TennisIDs (-w, since not every git grep supports \b).
 if git grep -nwE '[A-Z]{3}[0-9]{7}' -- ':!*package-lock.json'; then
   echo "::error::Found TennisID-shaped strings above. Tests use made-up IDs that don't match this shape, such as 'TEST-ID-1'."
   status=1
+fi
+
+# Emails, except no-reply and example addresses.
+if git grep -nIE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' -- ':!*package-lock.json' \
+  | grep -vE '@(users\.)?noreply\.(github|anthropic)\.com|noreply@|@example\.(com|org)'; then
+  echo "::error::Found email addresses above. Personal emails stay out of this public repo."
+  status=1
+fi
+
+# AWS account IDs, except the docs example used in tests.
+if git grep -nwE '[0-9]{12}' -- ':!*package-lock.json' | grep -v '123456789012'; then
+  echo "::error::Found 12-digit numbers above that look like AWS account IDs. The deploy reads the account from AWS."
+  status=1
+fi
+
+# Names from the PII_DENYLIST secret (comma-separated, never printed).
+if [ -n "${PII_DENYLIST:-}" ]; then
+  IFS=',' read -r -a words <<<"$PII_DENYLIST"
+  for word in "${words[@]}"; do
+    word="$(echo "$word" | xargs)"
+    [ -z "$word" ] && continue
+    if git grep -qiwF -- "$word" -- ':!*package-lock.json' || git log --format='%an %ae %cn %ce %B' | grep -qiwF -- "$word"; then
+      echo "::error::A word from PII_DENYLIST appears in tracked files or commit history (not printed, to keep it private)."
+      status=1
+    fi
+  done
 fi
 
 if git ls-files | grep -iE '\.(xlsx|xls|csv)$|wtn.*\.json$'; then
