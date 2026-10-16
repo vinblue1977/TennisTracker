@@ -10,14 +10,14 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] WTN sync: daily Lambda, failure email, first import
 - [x] Sign-in (passkeys), `/me` API, hosting URL; faster parallel CI
 - [x] README refresh; `make check` runs all CI checks locally
+- [x] Sign-in account and passkey created
+- [x] iPhone app: sign-in, Home, Matches, Match detail, notes, best-match stars; dark only; stricter CSP + security lints
 
 ## Next: WTN dashboard on iPhone
 
 - [ ] "Sync now" from the Mac (`make sync`)
 - [ ] Check new league results after WTN publishes them
-- [ ] Create your sign-in account and passkey
-- [ ] App screens: sign-in button, Home, Matches, Match detail; add to Home Screen
-- [ ] Match notes, best-match stars, trophies
+- [ ] Trophies (suggested from event names)
 
 ## Then
 
@@ -26,7 +26,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [ ] Upcoming matches from a shared calendar + reminder push
 - [ ] Push on WTN change or new matches
 - [ ] UTR and NTRP entered by hand
-- [ ] Desktop layout + Appearance setting (System / Light / Dark)
+- [ ] Desktop layout
 
 ## Later
 

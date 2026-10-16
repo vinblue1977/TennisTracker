@@ -42,9 +42,9 @@ class Web(Construct):
             security_headers_behavior=cloudfront.ResponseSecurityHeadersBehavior(
                 content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
                     content_security_policy=(
-                        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
-                        f"connect-src 'self' https://*.execute-api.{region}.amazonaws.com {auth_url}; "
-                        "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+                        "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; "
+                        "manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; "
+                        f"connect-src 'self' https://*.execute-api.{region}.amazonaws.com {auth_url}; upgrade-insecure-requests"
                     ),
                     override=True,
                 ),
@@ -58,6 +58,16 @@ class Web(Construct):
                 referrer_policy=cloudfront.ResponseHeadersReferrerPolicy(
                     referrer_policy=cloudfront.HeadersReferrerPolicy.NO_REFERRER, override=True
                 ),
+            ),
+            custom_headers_behavior=cloudfront.ResponseCustomHeadersBehavior(
+                custom_headers=[
+                    cloudfront.ResponseCustomHeader(
+                        header="Permissions-Policy",
+                        value="camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+                        override=True,
+                    ),
+                    cloudfront.ResponseCustomHeader(header="Cross-Origin-Opener-Policy", value="same-origin", override=True),
+                ]
             ),
         )
         distribution = cloudfront.Distribution(

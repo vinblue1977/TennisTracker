@@ -98,4 +98,5 @@ def _json(status: int, body: Any) -> dict[str, Any]:
             return float(value)
         raise TypeError(type(value).__name__)
 
-    return {"statusCode": status, "headers": {"Content-Type": "application/json"}, "body": json.dumps(body, default=default)}
+    headers = {"Content-Type": "application/json", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
+    return {"statusCode": status, "headers": headers, "body": json.dumps(body, default=default)}
