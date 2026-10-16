@@ -118,6 +118,19 @@ def test_wtn_sync_runs_daily_and_alerts_on_crash() -> None:
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 14})
 
 
+def test_api_alarms_budget_and_widget_throttle() -> None:
+    template = Template.from_stack(_stack({"alertEmail": "alerts@example.com"}))
+    for metric in ("Errors", "Throttles"):
+        template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": metric, "Threshold": 3, "Period": 300})
+    template.has_resource_properties(
+        "AWS::Budgets::Budget", {"Budget": Match.object_like({"BudgetLimit": {"Amount": 5, "Unit": "USD"}})}
+    )
+    template.has_resource_properties(
+        "AWS::ApiGatewayV2::Stage", {"RouteSettings": {"GET /widget": {"ThrottlingRateLimit": 1, "ThrottlingBurstLimit": 3}}}
+    )
+    Template.from_stack(_stack({})).resource_count_is("AWS::Budgets::Budget", 0)
+
+
 def test_rejects_malformed_repo() -> None:
     with pytest.raises(ValueError, match="githubRepo"):
         _stack({"githubRepo": "not a repo"})
