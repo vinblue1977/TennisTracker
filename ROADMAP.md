@@ -9,11 +9,11 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] AWS foundation: data table, deploy role, auto-deploy on merge
 - [x] WTN sync: daily Lambda, failure email, first import
 - [x] Sign-in (passkeys), `/me` API, hosting URL; faster parallel CI
+- [x] README refresh; `make check` runs all CI checks locally
 
 ## Next: WTN dashboard on iPhone
 
 - [ ] "Sync now" from the Mac (`make sync`)
-- [ ] README refresh
 - [ ] Check new league results after WTN publishes them
 - [ ] Create your sign-in account and passkey
 - [ ] App screens: sign-in button, Home, Matches, Match detail; add to Home Screen
