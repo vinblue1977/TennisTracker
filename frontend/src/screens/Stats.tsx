@@ -16,9 +16,9 @@ function People({ title, rows }: { title: string; rows: Tally[] }) {
         {title}
         {all ? '' : ` · ${MIN}+ matches`}
       </div>
-      {shown.length === 0 && <p class="muted">None yet.</p>}
+      {rows.length === 0 && <p class="muted">None yet.</p>}
       {shown.map((r) => (
-        <a key={r.name} class="stat-row" href={`#/with/${encodeURIComponent(r.name)}`} aria-label={`${r.name}, ${r.wins} wins ${r.losses} losses, see matches`}>
+        <a key={r.name} class="stat-row" href={`#/with/${encodeURIComponent(r.name)}`}>
           <span class="grow">
             {shortName(r.name)}
             <span class="bar">
@@ -64,7 +64,7 @@ export function Stats({ data }: { data: Data }) {
         <div class="year-chart" role="img" aria-label={years.map((y) => `${y.year} ${winPct(y)}%`).join(', ')}>
           {years.map((y) => (
             <div key={y.year}>
-              <i style={{ height: `${Math.max(winPct(y), 3)}px` }} />
+              <i style={{ height: `${winPct(y) ? Math.max(winPct(y), 3) : 0}px` }} />
               {y.year}
               <br />
               {winPct(y)}%

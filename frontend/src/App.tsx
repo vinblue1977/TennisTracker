@@ -92,7 +92,7 @@ export function App() {
   const screen = detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
   ) : withName ? (
-    <Matches key={withName} data={data} filter={safeDecode(withName)} />
+    <Matches key={withName} data={data} person={safeDecode(withName)} />
   ) : hash === '#/stats' ? (
     <Stats data={data} />
   ) : hash === '#/matches' ? (
