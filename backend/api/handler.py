@@ -249,7 +249,7 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
         new = photos.new_id()
         post = _s3().generate_presigned_post(
             Bucket=bucket,
-            Key=photos.object_key(user, new),
+            Key=photos.incoming_key(user, new),
             Fields={"Content-Type": "image/jpeg"},
             Conditions=[{"Content-Type": "image/jpeg"}, ["content-length-range", 1, photos.MAX_BYTES]],
             ExpiresIn=300,
@@ -260,13 +260,16 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
         return _json(400, {"error": "bad photo id"})
     if any(photos.photo_id_of(i) == new for i in mine):
         return _json(409, {"error": "already added"})
+    s3, pending = _s3(), photos.incoming_key(user, new)
     try:
-        start = _s3().get_object(Bucket=bucket, Key=photos.object_key(user, new), Range="bytes=0-2")["Body"].read()
+        start = s3.get_object(Bucket=bucket, Key=pending, Range="bytes=0-2")["Body"].read()
     except ClientError:
         return _json(400, {"error": "upload not found"})
     if start != photos.JPEG_START:  # the signed form checks type and size; this checks the bytes
-        _s3().delete_object(Bucket=bucket, Key=photos.object_key(user, new))
+        s3.delete_object(Bucket=bucket, Key=pending)
         return _json(400, {"error": "not a JPEG"})
+    s3.copy_object(Bucket=bucket, Key=photos.object_key(user, new), CopySource={"Bucket": bucket, "Key": pending})
+    s3.delete_object(Bucket=bucket, Key=pending)
     table.put_item(Item={**photos.key(user, owner, new), "at": datetime.now(UTC).isoformat()})
     return _json(200, {"id": new, "owner": owner})
 

@@ -264,12 +264,7 @@ jobs:
           cache-dependency-glob: |
             requirements*.txt
             layer/requirements.txt
-      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
-          mask-aws-account-id: true  # public repo: logs are public
-      - name: Deploy
+      - name: Build (no AWS credentials yet: unhashed dev tools install here)
         run: |
           uv venv --seed --python "$(which python)" .venv
           uv pip install --python .venv/bin/python -r requirements-dev.txt
@@ -277,6 +272,13 @@ jobs:
           make layer  # the locked runtime dependencies, hash-checked
           npm ci --ignore-scripts --no-audit --no-fund  # the pinned CDK CLI (package-lock.json)
           npm ci --prefix frontend --ignore-scripts --no-audit --no-fund && npm --prefix frontend run build
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
+          mask-aws-account-id: true  # public repo: logs are public
+      - name: Deploy
+        run: |
           : "${ALERT_EMAIL:?set the ALERT_EMAIL secret}"  # a missing secret would silently drop failure emails
           . .venv/bin/activate
           npx --no-install cdk deploy --require-approval never -c alertEmail="$ALERT_EMAIL" --outputs-file cdk-outputs.json

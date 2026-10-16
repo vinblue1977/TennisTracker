@@ -245,7 +245,7 @@ def _photo(s3, owner: str = "match:wtn:m1", upload: bool = True) -> tuple[int, d
     assert status == 200 and signed["fields"]["Content-Type"] == "image/jpeg" and "photos" in signed["url"]
     assert signed["url"].startswith("https://photos.s3."), signed["url"]  # the CSP only allows the bucket's own host
     if upload:
-        s3.put_object(Bucket="photos", Key=f"owner/{signed['id']}.jpg", Body=b"\xff\xd8\xff\xe0jpeg")
+        s3.put_object(Bucket="photos", Key=f"incoming/owner/{signed['id']}.jpg", Body=b"\xff\xd8\xff\xe0jpeg")
     return call("POST /me/photos", body=json.dumps({"owner": owner, "id": signed["id"]}))
 
 
@@ -308,9 +308,14 @@ def test_a_photo_id_is_added_once(bucket) -> None:
 
 def test_a_file_that_is_not_a_jpeg_is_rejected_and_removed(bucket) -> None:
     signed = call("POST /me/photos/upload-url", body='{"owner": "match:wtn:m1"}')[1]
-    bucket.put_object(Bucket="photos", Key=f"owner/{signed['id']}.jpg", Body=b"<html>not an image")
+    bucket.put_object(Bucket="photos", Key=f"incoming/owner/{signed['id']}.jpg", Body=b"<html>not an image")
     assert call("POST /me/photos", body=json.dumps({"owner": "match:wtn:m1", "id": signed["id"]})) == (
         400,
         {"error": "not a JPEG"},
     )
     assert "Contents" not in bucket.list_objects_v2(Bucket="photos")
+
+
+def test_a_confirmed_upload_moves_out_of_incoming(bucket) -> None:
+    photo = _photo(bucket)[1]["id"]
+    assert [o["Key"] for o in bucket.list_objects_v2(Bucket="photos")["Contents"]] == [f"owner/{photo}.jpg"]
