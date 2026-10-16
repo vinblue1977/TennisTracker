@@ -8,8 +8,8 @@ import type { Data } from '../types';
 type Ratings = { utr: number | null; ntrp: number | null };
 
 function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Ratings) => Promise<void> }) {
-  const [utr, setUtr] = useState(profile.utr != null ? String(profile.utr) : '');
-  const [ntrp, setNtrp] = useState(profile.ntrp != null ? String(profile.ntrp) : '');
+  const [utr, setUtr] = useState(typeof profile.utr === 'number' ? String(profile.utr) : '');
+  const [ntrp, setNtrp] = useState(typeof profile.ntrp === 'number' ? String(profile.ntrp) : '');
   const [status, setStatus] = useState('');
   const submit = async () => {
     const u = utr.trim() === '' ? null : Number(utr);
