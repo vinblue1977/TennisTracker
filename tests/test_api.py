@@ -244,7 +244,7 @@ def _photo(s3, owner: str = "match:wtn:m1", upload: bool = True) -> tuple[int, d
     status, signed = call("POST /me/photos/upload-url", body=json.dumps({"owner": owner}))
     assert status == 200 and signed["fields"]["Content-Type"] == "image/jpeg" and "photos" in signed["url"]
     if upload:
-        s3.put_object(Bucket="photos", Key=f"owner/{signed['id']}.jpg", Body=b"jpeg")
+        s3.put_object(Bucket="photos", Key=f"owner/{signed['id']}.jpg", Body=b"\xff\xd8\xff\xe0jpeg")
     return call("POST /me/photos", body=json.dumps({"owner": owner, "id": signed["id"]}))
 
 
@@ -293,3 +293,13 @@ def test_a_photo_id_is_added_once(bucket) -> None:
     photo = _photo(bucket)[1]["id"]
     again = call("POST /me/photos", body=json.dumps({"owner": "match:wtn:m2", "id": photo}))
     assert again == (409, {"error": "already added"})
+
+
+def test_a_file_that_is_not_a_jpeg_is_rejected_and_removed(bucket) -> None:
+    signed = call("POST /me/photos/upload-url", body='{"owner": "match:wtn:m1"}')[1]
+    bucket.put_object(Bucket="photos", Key=f"owner/{signed['id']}.jpg", Body=b"<html>not an image")
+    assert call("POST /me/photos", body=json.dumps({"owner": "match:wtn:m1", "id": signed["id"]})) == (
+        400,
+        {"error": "not a JPEG"},
+    )
+    assert "Contents" not in bucket.list_objects_v2(Bucket="photos")
