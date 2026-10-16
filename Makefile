@@ -5,11 +5,12 @@ CDK ?= npx --no-install cdk
 
 .PHONY: install lint test audit frontend privacy synth diff clean
 
-install:            ## Create the virtualenv and install everything
-	python3 -m venv .venv
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -r requirements-dev.txt
-	$(PYTHON) -m pip check
+install:            ## Create the virtualenv and install everything (uv if installed, else pip)
+	if command -v uv >/dev/null; then \
+		uv venv --seed --allow-existing --python python3.14 .venv && uv pip install --python $(PYTHON) -r requirements-dev.txt && uv pip check --python $(PYTHON); \
+	else \
+		python3.14 -m venv .venv && $(PYTHON) -m pip install --upgrade pip && $(PYTHON) -m pip install -r requirements-dev.txt && $(PYTHON) -m pip check; \
+	fi
 	npm ci --ignore-scripts --no-audit --no-fund  # the CDK CLI and pyright
 	npm ci --prefix frontend --ignore-scripts --no-audit --no-fund  # the PWA and its tools
 
