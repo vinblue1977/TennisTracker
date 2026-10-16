@@ -7,6 +7,7 @@ import re
 import secrets
 from datetime import UTC, datetime
 from decimal import Decimal
+from functools import cache
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -139,8 +140,8 @@ def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | Non
     if route != "POST /me/trophies" and not (old and trophies.TROPHY_ID.match(trophy_id)):
         return _json(404, {"error": "no such trophy"})
     if old and route == "DELETE /me/trophies/{id}":
-        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
         _delete_photos(table, user, [i for i in _items(table, user, "PHOTO#") if photos.owner_of(i) == f"trophy:{trophy_id}"])
+        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
         if old.get("suggestion"):  # stay gone rather than come back as a suggestion
             table.put_item(Item=trophies.dismissal(user, old["suggestion"]))
         return _json(200, {"id": trophy_id})
@@ -163,6 +164,7 @@ def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | Non
     return _json(200, trophies.public(item))
 
 
+@cache
 def _s3() -> Any:
     region = boto3.Session().region_name
     return boto3.client(
@@ -236,6 +238,8 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
     new = data.get("id") if isinstance(data, dict) else None
     if route != "POST /me/photos" or not (isinstance(new, str) and photos.PHOTO_ID.match(new)):
         return _json(400, {"error": "bad photo id"})
+    if any(photos.photo_id_of(i) == new for i in mine):
+        return _json(409, {"error": "already added"})
     try:
         _s3().head_object(Bucket=bucket, Key=photos.object_key(user, new))
     except ClientError:

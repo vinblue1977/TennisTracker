@@ -287,3 +287,9 @@ def test_deleting_a_trophy_deletes_its_photos(bucket) -> None:
     assert call("DELETE /me/trophies/{id}", match_id=trophy)[0] == 200
     assert call("GET /me/photos")[1]["photos"] == []
     assert "Contents" not in bucket.list_objects_v2(Bucket="photos", Prefix=f"owner/{photo}")
+
+
+def test_a_photo_id_is_added_once(bucket) -> None:
+    photo = _photo(bucket)[1]["id"]
+    again = call("POST /me/photos", body=json.dumps({"owner": "match:wtn:m2", "id": photo}))
+    assert again == (409, {"error": "already added"})
