@@ -163,11 +163,12 @@ function TrophyRow({ trophy: t, photos, onOpen, onPhotos }: { trophy: Trophy; ph
     );
   return (
     <button class="photo-card" type="button" onClick={onOpen}>
-      <img src={cover.url} alt="" loading="lazy" onError={() => onPhotos()} />
-      <span class="fade" />
-      {photos.length > 1 && <span class="photo-count">{photos.length} photos</span>}
       <span class="photo-card-text">
         <span style={{ fontSize: '22px' }}>{icon(t)}</span> {text}
+      </span>
+      <span class="photo-wrap">
+        <img src={cover.url} alt="" loading="lazy" onError={() => onPhotos()} />
+        {photos.length > 1 && <span class="photo-count">+{photos.length - 1}</span>}
       </span>
     </button>
   );
