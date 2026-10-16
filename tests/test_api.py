@@ -154,3 +154,79 @@ def test_widget_token_gives_wtn_and_next_match_and_can_be_replaced_or_revoked(ta
 
 def test_widget_rejects_missing_or_wrong_token(table) -> None:
     assert widget(None)[0] == 401 and widget("nope")[0] == 401
+
+
+def _add(**over) -> tuple[int, dict]:
+    body = {"event": "Club Open", "date": "2026-05-01", "result": "winner", "note": "", **over}
+    return call("POST /me/trophies", body=json.dumps(body))
+
+
+def test_trophies_add_edit_delete(table) -> None:
+    status, made = _add(note=" with Sam ")
+    assert status == 200 and made["note"] == "with Sam" and made["id"].startswith("t")
+    assert call("GET /me/trophies")[1]["trophies"] == [made]
+    edit = '{"event":"Club Open","date":"2026-06-01","result":"finalist","note":""}'
+    status, edited = call("PUT /me/trophies/{id}", match_id=made["id"], body=edit)
+    assert status == 200 and edited["id"] == made["id"] and edited["date"] == "2026-06-01"
+    assert [t["result"] for t in call("GET /me/trophies")[1]["trophies"]] == ["finalist"]
+    assert call("DELETE /me/trophies/{id}", match_id=made["id"])[0] == 200
+    assert call("GET /me/trophies")[1]["trophies"] == []
+    assert call("DELETE /me/trophies/{id}", match_id=made["id"])[0] == 404
+
+
+@pytest.mark.parametrize(
+    "over", [{"event": " "}, {"event": "x" * 101}, {"date": "2026-13-01"}, {"date": 5}, {"result": "loser"}, {"note": "x" * 201}]
+)
+def test_trophy_rejects_bad_input(table, over) -> None:
+    assert _add(**over)[0] == 400
+
+
+def test_trophy_edit_unknown_and_other_user(table) -> None:
+    assert call("PUT /me/trophies/{id}", match_id="tdeadbeef0000", body="{}")[0] == 404
+    table.put_item(Item={"PK": "USER#someone", "SK": "TROPHY#2026-01-01#t123456789abc", "event": "x"})
+    assert call("DELETE /me/trophies/{id}", match_id="t123456789abc")[0] == 404
+
+
+def test_trophy_suggestions_need_every_match_won(table) -> None:
+    def match(day: str, mid: str, event: str, won: bool | None) -> None:
+        item = {"PK": "USER#owner", "SK": f"MATCH#{day}#wtn:{mid}", "event": event, "won": won, "partners": [{"name": "Sam"}]}
+        table.put_item(Item=item)
+
+    match("2026-04-01", "a", "Spring Open", True)
+    match("2026-04-02", "b", "Spring Open", True)
+    match("2026-05-01", "c", "Lone Win", True)
+    match("2026-06-01", "d", "Mixed", True)
+    match("2026-06-02", "e", "Mixed", False)
+    match("2026-07-01", "f", "Pending", True)
+    match("2026-07-02", "g", "Pending", None)
+    found = call("GET /me/trophies")[1]["suggestions"]
+    assert [(s["id"], s["date"], s["matches"], s["partner"]) for s in found] == [("2026#Spring Open", "2026-04-02", 2, "Sam")]
+
+
+def test_accepting_or_dismissing_removes_suggestion_and_delete_keeps_it_gone(table) -> None:
+    for mid, day in (("a", "01"), ("b", "02")):
+        table.put_item(Item={"PK": "USER#owner", "SK": f"MATCH#2026-04-{day}#wtn:{mid}", "event": "Spring Open", "won": True})
+    table.put_item(Item={"PK": "USER#owner", "SK": "MATCH#2026-05-01#wtn:c", "event": "Other", "won": True})
+    table.put_item(Item={"PK": "USER#owner", "SK": "MATCH#2026-05-02#wtn:d", "event": "Other", "won": True})
+    ids = [s["id"] for s in call("GET /me/trophies")[1]["suggestions"]]
+    assert ids == ["2026#Other", "2026#Spring Open"]
+    _, made = _add(event="Spring Open", date="2026-04-02", suggestion="2026#Spring Open")
+    assert [s["id"] for s in call("GET /me/trophies")[1]["suggestions"]] == ["2026#Other"]
+    assert call("POST /me/trophies/dismiss", body='{"id": "2026#Other"}')[0] == 200
+    assert call("GET /me/trophies")[1]["suggestions"] == []
+    call("DELETE /me/trophies/{id}", match_id=made["id"])
+    assert call("GET /me/trophies")[1]["suggestions"] == []  # deleting does not bring it back
+    assert call("POST /me/trophies/dismiss", body="{}")[0] == 400
+
+
+def test_trophy_edit_keeps_suggestion_link(table) -> None:
+    _, made = _add(suggestion="2026#Club Open")
+    call("PUT /me/trophies/{id}", match_id=made["id"], body='{"event":"Club Open","date":"2026-05-02","result":"winner"}')
+    assert next(i for i in table.scan()["Items"] if i["SK"].startswith("TROPHY#"))["suggestion"] == "2026#Club Open"
+
+
+def test_trophy_date_must_be_canonical_and_double_tap_is_rejected(table) -> None:
+    for bad in ("20260501", "2026-W18-5"):
+        assert _add(date=bad)[0] == 400, bad
+    assert _add(suggestion="2026#Club Open")[0] == 200
+    assert _add(suggestion="2026#Club Open")[0] == 409

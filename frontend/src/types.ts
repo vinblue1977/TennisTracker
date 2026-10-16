@@ -42,7 +42,24 @@ export interface Profile {
   sync: { status?: string; lastRunAt?: string; latestDate?: string; latestValue?: number; matchCount?: number };
 }
 
+export interface Trophy {
+  id: string;
+  event: string;
+  date: string; // YYYY-MM-DD
+  result: 'winner' | 'finalist';
+  note: string;
+}
+
+export interface Suggestion {
+  id: string;
+  event: string;
+  date: string;
+  matches: number;
+  partner: string;
+}
+
 export interface Data {
+  trophies: { trophies: Trophy[]; suggestions: Suggestion[] };
   profile: Profile;
   ratings: Rating[];
   matches: Match[];

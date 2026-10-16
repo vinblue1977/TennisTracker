@@ -35,8 +35,8 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
-  const [profile, ratings, matches, upcoming] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming()]);
-  return { profile, ratings, matches, upcoming, vapidKey: config.vapidPublicKey ?? '' };
+  const [profile, ratings, matches, upcoming, trophies] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming(), api.trophies().catch(() => ({ trophies: [], suggestions: [] }))]);
+  return { profile, ratings, matches, upcoming, trophies, vapidKey: config.vapidPublicKey ?? '' };
 }
 
 export function App() {
@@ -79,6 +79,12 @@ export function App() {
     const saved = import.meta.env.DEV && isMock() ? ratings : await api.saveRatings(ratings);
     setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, profile: { ...prev.data.profile, ...saved } } } : prev));
   };
+  // Trophy changes can add, remove or hide suggestions, so reload the list from the server.
+  const onTrophies = async (change: () => Promise<unknown>) => {
+    await change();
+    const trophies = await api.trophies().catch(() => null); // the save worked; don't report a failed reload as a failed save
+    if (trophies) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
+  };
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
@@ -87,7 +93,7 @@ export function App() {
   ) : hash === '#/upcoming' ? (
     <Matches data={data} upcomingTab />
   ) : hash === '#/me' ? (
-    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} />
+    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} onTrophies={onTrophies} />
   ) : (
     <Home data={data} />
   );
