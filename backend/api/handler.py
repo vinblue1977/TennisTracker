@@ -225,6 +225,11 @@ def _widget_token(table: Any, user: str, route: str) -> dict[str, Any]:
     return _json(200, {"enabled": True, "token": token})
 
 
+def _instant(value: str) -> datetime:
+    moment = datetime.fromisoformat(value)
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
 def _widget(table: Any, token: str) -> dict[str, Any]:
     """WTN doubles and the next match, for the widget; nothing else leaves through the token."""
     item = table.get_item(Key={"PK": f"WIDGET#{_hash(token)}", "SK": "TOKEN"}).get("Item") if token else None
@@ -243,9 +248,11 @@ def _widget(table: Any, token: str) -> dict[str, Any]:
             "date": last["SK"].rsplit("#", 1)[1],
             "trend": [r["value"] for r in ratings[-24:]],
         }
-    now = datetime.now(UTC).isoformat()
-    upcoming = [i for i in _items(table, user, "UPCOMING#") if i["start"] >= now]
-    nxt = min(upcoming, key=lambda i: i["start"], default=None)
+    now = datetime.now(UTC)
+    upcoming = [
+        i for i in _items(table, user, "UPCOMING#") if _instant(i.get("end") or i["start"]) >= now
+    ]  # all-day: until its end
+    nxt = min(upcoming, key=lambda i: _instant(i["start"]), default=None)
     next_match = {k: nxt[k] for k in ("title", "start", "location", "allDay")} if nxt else None
     return _json(200, {"wtn": wtn, "next": next_match})
 

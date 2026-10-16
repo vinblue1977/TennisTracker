@@ -132,7 +132,13 @@ def test_widget_token_gives_wtn_and_next_match_and_can_be_replaced_or_revoked(ta
     table.put_item(Item={"PK": "USER#owner", "SK": "RATING#WTN#DOUBLE#2026-10-01", "value": Decimal("25.5"), "confidence": 80})
     table.put_item(Item={"PK": "USER#owner", "SK": "RATING#WTN#DOUBLE#2026-10-05", "value": Decimal("25.25"), "confidence": 82})
     table.put_item(
-        Item={"PK": "USER#owner", "SK": "UPCOMING#2000-01-01T09:00Z#old", "title": "Past", "start": "2000-01-01T09:00:00+00:00"}
+        Item={
+            "PK": "USER#owner",
+            "SK": "UPCOMING#2000-01-01T09:00Z#old",
+            "title": "Past",
+            "start": "2000-01-01T09:00:00+00:00",
+            "end": "2000-01-01T10:00:00+00:00",
+        }
     )
     soon = {"title": "League", "location": "Court 1", "allDay": False, "start": "2999-01-02T09:00:00+00:00"}
     table.put_item(Item={"PK": "USER#owner", "SK": "UPCOMING#2999-01-02T09:00Z#a", **soon})

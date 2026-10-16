@@ -9,7 +9,7 @@ export function Widget() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    api.widgetStatus().then((s) => setOn(s.enabled), () => setOn(null));
+    api.widgetStatus().then((s) => setOn(s.enabled), () => setMessage('Could not check the widget. Turn off still works.'));
   }, []);
 
   const run = (task: () => Promise<string>) => async () => {
@@ -53,9 +53,9 @@ export function Widget() {
       )}
       <div class="grid2">
         <button class="button quiet" type="button" onClick={make}>
-          {on ? 'Make a new line' : 'Turn on widget'}
+          {on === false ? 'Turn on widget' : 'Make a new line'}
         </button>
-        {on && (
+        {on !== false && (
           <button class="button quiet" type="button" onClick={turnOff}>
             Turn off
           </button>

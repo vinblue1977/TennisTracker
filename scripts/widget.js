@@ -14,7 +14,7 @@ async function setup() {
   alert.addAction('Save');
   alert.addCancelAction('Cancel');
   if ((await alert.present()) === -1) return null;
-  Keychain.set(KEY, alert.textFieldValue(0).trim());
+  Keychain.set(KEY, alert.textFieldValue(0).trim().replace(/\s+/g, ' '));
   return Keychain.get(KEY);
 }
 
@@ -23,7 +23,7 @@ async function load(line) {
   const request = new Request(`${url}/widget`);
   request.headers = { 'X-Widget-Token': token };
   const data = await request.loadJSON();
-  if (!data.wtn && !data.next) throw new Error('no data');
+  if (request.response.statusCode === 401) return null; // turned off, replaced or mis-pasted
   return data;
 }
 
@@ -37,7 +37,7 @@ function trend(values, width, height) {
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   const x = (i) => (i / Math.max(values.length - 1, 1)) * width;
-  const y = (v) => ((v - lo) / Math.max(hi - lo, 0.01)) * (height - 4) + 2; // lower WTN is better, so it plots lower
+  const y = (v) => height - 2 - ((v - lo) / Math.max(hi - lo, 0.01)) * (height - 4); // improving (lower) WTN plots lower
   const draw = new DrawContext();
   draw.size = new Size(width, height);
   draw.opaque = false;
@@ -93,12 +93,24 @@ if (line) {
   let stale = '';
   try {
     data = await load(line);
+    if (!data) {
+      Keychain.remove(KEY); // the next run asks for a new line
+      files.remove(cache);
+      const w = new ListWidget();
+      w.backgroundColor = ground;
+      label(w, 'Widget turned off. Run the script to set up again.', 12, text, true);
+      if (config.runsInWidget) Script.setWidget(w);
+      else await w.presentSmall();
+      Script.complete();
+      return;
+    }
     files.writeString(cache, JSON.stringify({ at: Date.now(), data }));
   } catch (e) {
     if (!files.fileExists(cache)) throw e;
     const saved = JSON.parse(files.readString(cache));
     data = saved.data;
-    stale = `${Math.round((Date.now() - saved.at) / 3600000)}h ago`;
+    const minutes = Math.round((Date.now() - saved.at) / 60000);
+    stale = minutes < 90 ? `${minutes} min ago` : `${Math.round(minutes / 60)}h ago`;
   }
   const widget = build(data, stale, line.split(' ')[2]);
   if (config.runsInWidget) Script.setWidget(widget);
