@@ -27,6 +27,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 ## Then
 
 - [ ] Log local match + one-time spreadsheet import
+- [ ] Photos on trophies and matches
 - [ ] Stats: partners, head-to-head, win % by year, upset wins, best matches
 - [ ] Repeating calendar events (e.g. weekly league nights)
 - [ ] Desktop layout
