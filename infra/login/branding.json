@@ -162,7 +162,7 @@
    "darkMode": {
     "defaults": {
      "backgroundColor": "24302aff",
-     "borderColor": "7d8998ff"
+     "borderColor": "7d8a83ff"
     },
     "selected": {
      "backgroundColor": "d7f04bff",
@@ -276,8 +276,8 @@
      },
      "defaults": {
       "backgroundColor": "24302aff",
-      "borderColor": "c6c6cdff",
-      "textColor": "c6c6cdff"
+      "borderColor": "a3b0a8ff",
+      "textColor": "a3b0a8ff"
      },
      "hover": {
       "backgroundColor": "24302aff",
@@ -418,7 +418,7 @@
      "textColor": "e4f57fff"
     },
     "defaults": {
-     "backgroundColor": "121b2eff",
+     "backgroundColor": "24302aff",
      "borderColor": "d7f04bff",
      "textColor": "d7f04bff"
     },
