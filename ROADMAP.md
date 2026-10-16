@@ -20,7 +20,6 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 ## Next: WTN dashboard on iPhone
 
 - [ ] "Sync now" from the Mac (`make sync`)
-- [ ] Check new league results after WTN publishes them
 - [ ] Trophies (suggested from event names)
 
 ## Then
