@@ -203,9 +203,10 @@ jobs:
           fail-on-severity: high
 
   # Decides whether a push to main deploys: anything outside docs, Markdown, tests and CI config
-  # (except this workflow, which holds the deploy step).
+  # (except this workflow, which holds the deploy step). A manual run on main always deploys: merges made by
+  # GITHUB_TOKEN (the auto-merge workflow) don't start a push run, so `gh workflow run ci.yml --ref main` covers them.
   changes:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
     timeout-minutes: 5
     outputs:
@@ -217,8 +218,10 @@ jobs:
           persist-credentials: false
       - id: diff
         run: |
-          # The whole push range; an unknown base (new branch, force push) deploys.
-          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+          # The whole push range; an unknown base (new branch, force push, manual run) deploys.
+          if [ "$EVENT" = workflow_dispatch ]; then
+            changed="manual-run"
+          elif git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
             changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"
           else
             changed="unknown-base"
@@ -229,6 +232,7 @@ jobs:
           echo "deploy=$([ -n "$deployable" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
         env:
           BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
 
   deploy:
     needs: changes
