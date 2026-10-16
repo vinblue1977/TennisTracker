@@ -8,6 +8,7 @@ import { Home } from './screens/Home';
 import { MatchDetail } from './screens/MatchDetail';
 import { Matches } from './screens/Matches';
 import { Me } from './screens/Me';
+import { WtnHistory } from './screens/WtnHistory';
 import type { Data } from './types';
 
 type State = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; data: Data };
@@ -92,6 +93,8 @@ export function App() {
     <Matches data={data} />
   ) : hash === '#/upcoming' ? (
     <Matches data={data} upcomingTab />
+  ) : hash === '#/wtn' ? (
+    <WtnHistory data={data} />
   ) : hash === '#/me' ? (
     <Me data={data} onCalendar={onCalendar} onRatings={onRatings} onTrophies={onTrophies} />
   ) : (

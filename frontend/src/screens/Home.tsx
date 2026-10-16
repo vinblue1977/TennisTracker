@@ -19,7 +19,7 @@ export function Home({ data }: { data: Data }) {
         <h1 class="title">Tennis</h1>
       </header>
 
-      <section class="hero" aria-label="World Tennis Number">
+      <a class="hero" href="#/wtn" aria-label="World Tennis Number, see history">
         <span class="eyebrow">World Tennis Number · Doubles</span>
         {now ? (
           <>
@@ -44,7 +44,7 @@ export function Home({ data }: { data: Data }) {
         ) : (
           <span class="muted">No WTN yet. It appears after the first sync.</span>
         )}
-      </section>
+      </a>
 
       <div class="grid2">
         <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} aria-label="Doubles UTR">
