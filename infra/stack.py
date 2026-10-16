@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from aws_cdk import CfnOutput, DefaultStackSynthesizer, Duration, RemovalPolicy, Stack
+from aws_cdk import aws_budgets as budgets
 from aws_cdk import aws_cloudwatch_actions as cw_actions
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_events as events
@@ -62,11 +63,48 @@ class TennisTrackerStack(Stack):
             "Reminders", "push.reminders.handler", events.Schedule.rate(Duration.minutes(15)), topic, "Match reminders"
         )
         site_dir = self.node.try_get_context("siteDir") or "frontend/dist"
-        Web(self, "Web", table=self.table, site_dir=site_dir, calendar_fn=calendar, layer=self.layer, push_env=self.push_env)  # pyright: ignore[reportArgumentType]
+        Web(
+            self,
+            "Web",
+            table=self.table,
+            site_dir=site_dir,
+            calendar_fn=calendar,  # pyright: ignore[reportArgumentType]
+            layer=self.layer,
+            push_env=self.push_env,
+            topic=topic,  # pyright: ignore[reportArgumentType]
+        )
+
+        self._budget()
 
         github_repo: str = self.node.try_get_context("githubRepo") or ""
         if github_repo:
             self._github_deploy_role(github_repo)
+
+    def _budget(self) -> None:
+        """Emails the alert address at 80% of the monthly limit (actual) and 100% (forecast). Two budgets are free."""
+        alert_email: str = self.node.try_get_context("alertEmail") or ""
+        if not alert_email:
+            return
+        limit = float(self.node.try_get_context("monthlyBudgetUsd") or 5)
+
+        def notify(threshold: int, kind: str) -> budgets.CfnBudget.NotificationWithSubscribersProperty:
+            return budgets.CfnBudget.NotificationWithSubscribersProperty(
+                notification=budgets.CfnBudget.NotificationProperty(
+                    comparison_operator="GREATER_THAN", notification_type=kind, threshold=threshold, threshold_type="PERCENTAGE"
+                ),
+                subscribers=[budgets.CfnBudget.SubscriberProperty(subscription_type="EMAIL", address=alert_email)],
+            )
+
+        budgets.CfnBudget(
+            self,
+            "MonthlyBudget",
+            budget=budgets.CfnBudget.BudgetDataProperty(
+                budget_type="COST",
+                time_unit="MONTHLY",
+                budget_limit=budgets.CfnBudget.SpendProperty(amount=limit, unit="USD"),
+            ),
+            notifications_with_subscribers=[notify(80, "ACTUAL"), notify(100, "FORECASTED")],
+        )
 
     def _alert_topic(self) -> sns.Topic:
         topic = sns.Topic(self, "AlertTopic", enforce_ssl=True)

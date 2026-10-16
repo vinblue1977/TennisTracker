@@ -9,6 +9,8 @@ from aws_cdk import aws_apigatewayv2_authorizers as authorizers
 from aws_cdk import aws_apigatewayv2_integrations as integrations
 from aws_cdk import aws_cloudfront as cloudfront
 from aws_cdk import aws_cloudfront_origins as origins
+from aws_cdk import aws_cloudwatch as cloudwatch
+from aws_cdk import aws_cloudwatch_actions as cw_actions
 from aws_cdk import aws_cognito as cognito
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_iam as iam
@@ -16,6 +18,7 @@ from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_s3_deployment as s3deploy
+from aws_cdk import aws_sns as sns
 from cdk_nag import NagPackSuppression, NagSuppressions, RegexAppliesTo
 from constructs import Construct
 
@@ -35,6 +38,7 @@ class Web(Construct):
         calendar_fn: lambda_.IFunction,
         layer: lambda_.ILayerVersion,
         push_env: dict[str, str],
+        topic: sns.ITopic,
     ) -> None:
         super().__init__(scope, construct_id)
         region = Stack.of(self).region
@@ -216,6 +220,16 @@ class Web(Construct):
             log_group=logs.LogGroup(self, "ApiLogs", retention=logs.RetentionDays.TWO_WEEKS),
         )
         table.grant_read_write_data(fn)
+        # The app's own function: a burst of crashes (3 in 5 minutes) or throttled calls emails the alert topic.
+        for metric_name, metric in (("Errors", fn.metric_errors), ("Throttles", fn.metric_throttles)):
+            metric(period=Duration.minutes(5)).create_alarm(
+                self,
+                f"Api{metric_name}",
+                threshold=3,
+                evaluation_periods=1,
+                treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+                alarm_description=f"The app's API Lambda reported {metric_name.lower()}",
+            ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
         fn.add_to_role_policy(  # photos only: add, view and delete objects (no listing, no bucket settings)
             iam.PolicyStatement(
                 actions=["s3:PutObject", "s3:GetObject", "s3:DeleteObject"], resources=[photos.arn_for_objects("*")]
@@ -287,6 +301,13 @@ class Web(Construct):
             throttle=apigw.ThrottleSettings(rate_limit=10, burst_limit=20),
         )
         cfn_stage: apigw.CfnStage = stage.node.default_child  # type: ignore[assignment]
+        # The widget route is public (token-checked in the handler): cap it so a flood can't use up the app's allowance.
+        cfn_stage.route_settings = {
+            "GET /widget": {
+                "ThrottlingRateLimit": 1,
+                "ThrottlingBurstLimit": 3,
+            }  # CloudFormation key names: a map value is not converted
+        }
         cfn_stage.access_log_settings = apigw.CfnStage.AccessLogSettingsProperty(
             destination_arn=access_logs.log_group_arn,
             format='{"requestId":"$context.requestId","route":"$context.routeKey","status":"$context.status"}',
