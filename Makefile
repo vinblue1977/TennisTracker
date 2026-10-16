@@ -32,6 +32,7 @@ audit:              ## Check dependencies for known vulnerabilities
 frontend:           ## PWA: ESLint, TypeScript types, Vitest, Vite build and the size limit
 	cd frontend && npm run -s lint && npm run -s typecheck && npm run -s test && npm run -s build
 	scripts/check_size.sh frontend/dist
+	! grep -rlE 'mockData|/\?mock' frontend/dist || (echo 'Demo data leaked into the build' && exit 1)
 
 privacy:            ## Fail on TennisID-shaped strings or data exports in tracked files (public repo)
 	scripts/check_personal_data.sh

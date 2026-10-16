@@ -7,21 +7,29 @@ const result = (m: Match) => (m.won === true ? 'W' : m.won === false ? 'L' : 'N'
 const names = (players: Match['partners']) => players.map((p) => shortName(p.name)).join(' / ');
 export const matchHref = (m: Match) => `#/match/${encodeURIComponent(m.id)}`;
 
+/** Result badge, event, date line and score: shared by Home's rows and the Matches cards. */
+function MatchHeader({ m, detail }: { m: Match; detail: string }) {
+  return (
+    <>
+      <span class={`badge ${result(m)}`}>{result(m) === 'N' ? '–' : result(m)}</span>
+      <div class="grow">
+        <div class="ellipsis" style={{ fontWeight: 700 }}>
+          {m.event}
+        </div>
+        <div class="muted" style={{ fontSize: '13px' }}>
+          {detail}
+        </div>
+      </div>
+      <span class="score">{m.score}</span>
+    </>
+  );
+}
+
 /** Compact row for Home's recent results. */
 export function MatchRow({ m }: { m: Match }) {
   return (
     <a class="item" href={matchHref(m)}>
-      <span class={`badge ${result(m)}`}>{result(m) === 'N' ? '–' : result(m)}</span>
-      <div class="grow">
-        <div class="ellipsis" style={{ fontWeight: 600 }}>
-          {m.event}
-        </div>
-        <div class="muted" style={{ fontSize: '13px' }}>
-          {formatDate(matchDate(m))}
-          {m.partners.length ? ` · w/ ${names(m.partners)}` : ''}
-        </div>
-      </div>
-      <span class="score">{m.score}</span>
+      <MatchHeader m={m} detail={`${formatDate(matchDate(m))}${m.partners.length ? ` · w/ ${names(m.partners)}` : ''}`} />
     </a>
   );
 }
@@ -52,16 +60,7 @@ export function Matches({ data }: { data: Data }) {
             {header}
             <a class="match" href={matchHref(m)}>
               <div class="row" style={{ gap: '10px' }}>
-                <span class={`badge ${result(m)}`}>{result(m) === 'N' ? '–' : result(m)}</span>
-                <div class="grow">
-                  <div class="ellipsis" style={{ fontWeight: 700 }}>
-                    {m.event}
-                  </div>
-                  <div class="muted" style={{ fontSize: '13px' }}>
-                    {formatDate(matchDate(m))}
-                  </div>
-                </div>
-                <span class="score">{m.score}</span>
+                <MatchHeader m={m} detail={formatDate(matchDate(m))} />
               </div>
               <span style={{ fontSize: '14px', color: '#c9d2cc' }}>
                 {m.partners.length ? `w/ ${names(m.partners)} · ` : ''}vs {m.opponents.length ? names(m.opponents) : 'default'}

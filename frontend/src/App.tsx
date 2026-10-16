@@ -25,9 +25,11 @@ const useHash = () => {
   return hash;
 };
 
+// Dev only (`npm run dev`, then /?mock): made-up data, no sign-in. Removed from production builds.
+const isMock = () => import.meta.env.DEV && new URLSearchParams(location.search).has('mock');
+
 async function loadData(): Promise<Data | null> {
-  // Dev only (`npm run dev`, then /?mock): made-up data, no sign-in. Removed from production builds.
-  if (import.meta.env.DEV && new URLSearchParams(location.search).has('mock')) {
+  if (import.meta.env.DEV && isMock()) {
     return (await import('./mock')).mockData;
   }
   const config = await loadConfig();
@@ -60,7 +62,7 @@ export function App() {
 
   const { data } = state;
   const onSave = async (id: string, note: string, starred: boolean) => {
-    const saved = import.meta.env.DEV && location.search.includes('mock') ? { note, starred } : await api.saveExtras(id, note, starred);
+    const saved = import.meta.env.DEV && isMock() ? { note, starred } : await api.saveExtras(id, note, starred);
     setState({ kind: 'ready', data: { ...data, matches: data.matches.map((m) => (m.id === id ? { ...m, ...saved } : m)) } });
   };
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
