@@ -70,6 +70,9 @@ def test_extras_are_saved_and_returned_with_matches(table) -> None:
     [
         ("../etc", "{}", 400),
         ("wtn:m1", "not json", 400),
+        ("wtn:m1", "[]", 400),
+        ("wtn:m1", "null", 400),
+        ("wtn:m1", '"x"', 400),
         ("wtn:m1", '{"note": 5}', 400),
         ("wtn:m1", json.dumps({"note": "x" * 2001}), 400),
         ("wtn:m1", '{"starred": "yes"}', 400),

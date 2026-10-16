@@ -76,6 +76,8 @@ def _put_extras(table: Any, user: str, match_id: str, body: str | None) -> dict[
         data = json.loads(body or "{}")
     except ValueError:
         return _json(400, {"error": "body must be JSON"})
+    if not isinstance(data, dict):
+        return _json(400, {"error": "body must be a JSON object"})
     note, starred = data.get("note", ""), data.get("starred", False)
     if not isinstance(note, str) or len(note) > MAX_NOTE or not isinstance(starred, bool):
         return _json(400, {"error": f"note: text up to {MAX_NOTE} characters; starred: true or false"})
