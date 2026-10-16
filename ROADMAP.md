@@ -12,6 +12,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] README refresh; `make check` runs all CI checks locally
 - [x] Sign-in account and passkey created
 - [x] iPhone app: sign-in, Home, Matches, Match detail, notes, best-match stars; dark only; stricter CSP + security lints
+- [x] Calendar sync: hourly from a public iCloud calendar; Next match on Home; Upcoming tab
 
 ## Next: WTN dashboard on iPhone
 
@@ -23,7 +24,8 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 
 - [ ] Log local match + one-time spreadsheet import
 - [ ] Stats: partners, head-to-head, win % by year, upset wins, best matches
-- [ ] Upcoming matches from a shared calendar + reminder push
+- [ ] Match reminder push (upcoming matches are synced)
+- [ ] Repeating calendar events (e.g. weekly league nights)
 - [ ] Push on WTN change or new matches
 - [ ] UTR and NTRP entered by hand
 - [ ] Desktop layout

@@ -86,3 +86,19 @@ def test_extras_reject_bad_input_and_other_users_matches(table, match_id: str, b
 def test_requires_sign_in_and_known_route(table) -> None:
     assert call("GET /me/profile", sub=None)[0] == 401
     assert call("GET /admin")[0] == 404
+
+
+def test_calendar_link_is_validated_saved_and_removed(table) -> None:
+    assert call("PUT /me/calendar", body='{"url": "https://evil.example.com/published/2/x"}')[0] == 400
+    assert call("PUT /me/calendar", body="[]")[0] == 400
+    status, body = call("PUT /me/calendar", body='{"url": "webcal://p30-caldav.icloud.com/published/2/TESTTOKEN"}')
+    assert status == 200 and body == {"connected": True}
+    profile = table.get_item(Key={"PK": "USER#owner", "SK": "PROFILE"})["Item"]
+    assert profile["calendarUrl"] == "https://p30-caldav.icloud.com/published/2/TESTTOKEN" and profile["tennisId"] == "TEST-ID-ME"
+    assert call("GET /me/profile")[1]["calendar"]["connected"] is True
+
+    table.put_item(Item={"PK": "USER#owner", "SK": "UPCOMING#2026-10-17T02:00Z#u1", "title": "League"})
+    assert [u["title"] for u in call("GET /me/upcoming")[1]["upcoming"]] == ["League"]
+    assert call("PUT /me/calendar", body='{"url": ""}')[1] == {"connected": False}
+    assert call("GET /me/upcoming")[1]["upcoming"] == []
+    assert "calendarUrl" not in table.get_item(Key={"PK": "USER#owner", "SK": "PROFILE"})["Item"]

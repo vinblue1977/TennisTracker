@@ -65,3 +65,17 @@ function shiftDays(iso: string, days: number): string {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** "Fri 16 Oct · 21:00" in the phone's time zone; all-day events show just the day. */
+export function formatWhen(startIso: string, allDay: boolean): string {
+  const d = new Date(startIso);
+  const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(allDay ? { timeZone: 'UTC' } : {}) });
+  return allDay ? day : `${day} · ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+/** "Today", "Tomorrow" or "" for a start time, in the phone's time zone. */
+export function relativeDay(startIso: string, now = new Date()): string {
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((day(new Date(startIso)) - day(now)) / 86_400_000);
+  return diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : '';
+}

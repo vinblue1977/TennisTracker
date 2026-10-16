@@ -35,8 +35,8 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
-  const [profile, ratings, matches] = await Promise.all([api.profile(), api.ratings(), api.matches()]);
-  return { profile, ratings, matches };
+  const [profile, ratings, matches, upcoming] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming()]);
+  return { profile, ratings, matches, upcoming };
 }
 
 export function App() {
@@ -68,20 +68,29 @@ export function App() {
       prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, matches: prev.data.matches.map((m) => (m.id === id ? { ...m, ...saved } : m)) } } : prev,
     );
   };
+  const onCalendar = async (url: string) => {
+    const { connected } = import.meta.env.DEV && isMock() ? { connected: Boolean(url) } : await api.saveCalendar(url);
+    // The server syncs right away; give it a moment, then refresh the list.
+    await new Promise((resolve) => setTimeout(resolve, connected ? 3000 : 0));
+    const [profile, upcoming] = import.meta.env.DEV && isMock() ? [data.profile, data.upcoming] : await Promise.all([api.profile(), api.upcoming()]);
+    setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, profile, upcoming } } : prev));
+  };
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
   ) : hash === '#/matches' ? (
     <Matches data={data} />
+  ) : hash === '#/upcoming' ? (
+    <Matches data={data} upcomingTab />
   ) : hash === '#/me' ? (
-    <Me data={data} />
+    <Me data={data} onCalendar={onCalendar} />
   ) : (
     <Home data={data} />
   );
   return (
     <div class="page">
       {screen}
-      <TabBar active={detailId ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
+      <TabBar active={detailId ? '#/matches' : hash === '#/upcoming' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
     </div>
   );
 }

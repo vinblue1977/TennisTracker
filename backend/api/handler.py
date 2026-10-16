@@ -9,6 +9,8 @@ from typing import Any
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from calendar_sync.fetch import CalendarError, normalize
+
 MAX_NOTE = 2000
 MATCH_ID = re.compile(r"^(wtn|local):[\w.-]{1,80}$")
 
@@ -27,6 +29,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _json(200, {"ratings": _items(table, user, "RATING#")})
     if route == "GET /me/matches":
         return _json(200, {"matches": _matches(table, user)})
+    if route == "GET /me/upcoming":
+        return _json(200, {"upcoming": [_public(i) for i in _items(table, user, "UPCOMING#")]})
+    if route == "PUT /me/calendar":
+        return _put_calendar(table, user, event.get("body"))
     if route == "PUT /me/matches/{id}/extras":
         return _put_extras(table, user, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
     return _json(404, {"error": "not found"})
@@ -53,8 +59,10 @@ def _profile(table: Any, user: str) -> dict[str, Any]:
     profile = table.get_item(Key={"PK": f"USER#{user}", "SK": "PROFILE"}).get("Item", {})
     sync = table.get_item(Key={"PK": f"USER#{user}", "SK": "SYNC#WTN"}).get("Item", {})
     tennis_id = str(profile.get("tennisId", ""))
+    calendar = table.get_item(Key={"PK": f"USER#{user}", "SK": "SYNC#CAL"}).get("Item", {})
     return {
         "tennisId": f"{tennis_id[:3]}•••{tennis_id[-4:]}" if tennis_id else None,  # masked
+        "calendar": {"connected": "calendarUrl" in profile, **{k: calendar.get(k) for k in ("status", "lastRunAt", "upcoming")}},
         "sync": {k: sync.get(k) for k in ("status", "lastRunAt", "latestDate", "latestValue", "matchCount")},
     }
 
@@ -86,6 +94,27 @@ def _put_extras(table: Any, user: str, match_id: str, body: str | None) -> dict[
         return _json(404, {"error": "no such match"})
     table.put_item(Item={"PK": f"USER#{user}", "SK": f"EXTRA#{match_id}", "note": note, "starred": starred})
     return _json(200, {"id": match_id, "note": note, "starred": starred})
+
+
+def _put_calendar(table: Any, user: str, body: str | None) -> dict[str, Any]:
+    try:
+        data = json.loads(body or "{}")
+        if not isinstance(data, dict) or not isinstance(data.get("url"), str):
+            raise KeyError("url")
+        url = normalize(data["url"]) if data["url"] else None  # empty string disconnects
+    except (ValueError, KeyError, CalendarError) as error:
+        return _json(400, {"error": str(error) if isinstance(error, CalendarError) else 'body must be {"url": "webcal://…"}'})
+    key = {"PK": f"USER#{user}", "SK": "PROFILE"}
+    if url:
+        table.update_item(Key=key, UpdateExpression="SET calendarUrl = :u", ExpressionAttributeValues={":u": url})
+        function = os.environ.get("CALENDAR_FUNCTION")
+        if function:  # sync now rather than at the next hourly run
+            boto3.client("lambda").invoke(FunctionName=function, InvocationType="Event", Payload=json.dumps({"user": user}))
+    else:
+        table.update_item(Key=key, UpdateExpression="REMOVE calendarUrl")
+        for item in _items(table, user, "UPCOMING#"):
+            table.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+    return _json(200, {"connected": bool(url)})
 
 
 def _public(item: dict[str, Any]) -> dict[str, Any]:

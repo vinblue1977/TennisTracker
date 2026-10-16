@@ -19,7 +19,9 @@ DEV_ORIGIN = "http://localhost:5173"
 
 
 class Web(Construct):
-    def __init__(self, scope: Construct, construct_id: str, *, table: dynamodb.ITableV2, site_dir: str) -> None:
+    def __init__(
+        self, scope: Construct, construct_id: str, *, table: dynamodb.ITableV2, site_dir: str, calendar_fn: lambda_.IFunction
+    ) -> None:
         super().__init__(scope, construct_id)
         region = Stack.of(self).region
 
@@ -158,10 +160,11 @@ class Web(Construct):
             code=lambda_.Code.from_asset("backend", exclude=["**/__pycache__"]),
             memory_size=256,
             timeout=Duration.seconds(10),
-            environment={"TABLE_NAME": table.table_name},
+            environment={"TABLE_NAME": table.table_name, "CALENDAR_FUNCTION": calendar_fn.function_name},
             log_group=logs.LogGroup(self, "ApiLogs", retention=logs.RetentionDays.TWO_WEEKS),
         )
         table.grant_read_write_data(fn)
+        calendar_fn.grant_invoke(fn)  # sync right after the calendar link is saved
         api = apigw.HttpApi(
             self,
             "HttpApi",
@@ -180,6 +183,8 @@ class Web(Construct):
             (apigw.HttpMethod.GET, "/me/ratings"),
             (apigw.HttpMethod.GET, "/me/matches"),
             (apigw.HttpMethod.PUT, "/me/matches/{id}/extras"),
+            (apigw.HttpMethod.GET, "/me/upcoming"),
+            (apigw.HttpMethod.PUT, "/me/calendar"),
         ):
             api.add_routes(path=path, methods=[method], integration=integration)
         access_logs = logs.LogGroup(self, "ApiAccessLogs", retention=logs.RetentionDays.TWO_WEEKS)
