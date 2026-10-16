@@ -3,7 +3,7 @@ SITE_DIR ?= frontend/dist
 # The CDK CLI pinned in package-lock.json (`make install` runs npm ci).
 CDK ?= npx --no-install cdk
 
-.PHONY: install lint test audit frontend privacy synth diff clean
+.PHONY: install check lint test audit frontend privacy synth diff clean
 
 install:            ## Create the virtualenv and install everything (uv if installed, else pip)
 	if command -v uv >/dev/null; then \
@@ -13,6 +13,10 @@ install:            ## Create the virtualenv and install everything (uv if insta
 	fi
 	npm ci --ignore-scripts --no-audit --no-fund  # the CDK CLI and pyright
 	npm ci --prefix frontend --ignore-scripts --no-audit --no-fund  # the PWA and its tools
+
+check:              ## Everything CI checks, locally (synth uses a stand-in app, like CI)
+	$(MAKE) privacy lint test frontend audit
+	$(MAKE) synth SITE_DIR=tests/fixtures/site
 
 lint:               ## Python: ruff (with Bandit security rules) and pyright types
 	$(PYTHON) -m ruff check .
