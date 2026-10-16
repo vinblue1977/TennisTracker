@@ -1,4 +1,4 @@
-"""Every 15 minutes: match reminders at 20:00 the evening before and 2 hours before (user's time zone)."""
+"""Every 15 minutes: match reminders at 8:00pm the evening before and 2 hours before (user's time zone)."""
 
 import os
 from datetime import UTC, datetime, time, timedelta
@@ -15,7 +15,7 @@ LATE = timedelta(hours=1)  # skip a reminder that is this overdue (e.g. a match 
 
 
 def due(start: datetime, zone: ZoneInfo, now: datetime) -> list[str]:
-    """Which reminders are due now: 'evening' (20:00 the day before) and 'soon' (2 hours before)."""
+    """Which reminders are due now: 'evening' (8:00pm the day before) and 'soon' (2 hours before)."""
     if now >= start:
         return []
     local_start = start.astimezone(zone)
@@ -28,7 +28,12 @@ def message(item: dict[str, Any], kind: str, zone: ZoneInfo) -> tuple[str, str]:
     start = datetime.fromisoformat(item["start"]).astimezone(zone)
     when = "Tomorrow" if kind == "evening" else "In 2 hours"
     where = f" · {item['location']}" if item.get("location") else ""
-    return f"{when} {start:%H:%M}: {item['title']}", f"{start:%a %d %b}{where}"
+    return f"{when} {clock(start)}: {item['title']}", f"{start:%a %d %b}{where}"
+
+
+def clock(t: datetime) -> str:
+    """12-hour time like the app: 9:00pm."""
+    return f"{t.hour % 12 or 12}:{t.minute:02d}{'am' if t.hour < 12 else 'pm'}"
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:

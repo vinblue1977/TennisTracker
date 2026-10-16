@@ -99,9 +99,9 @@ def test_reminders_send_once_each(table, sent) -> None:
     )  # fmt: skip
     evening = datetime(2026, 10, 16, 1, 5, tzinfo=UTC)  # 20:05 Chicago, the day before
     assert r.run(table, evening) == 1 and r.run(table, evening) == 0
-    assert sent[0] == {"title": "Tomorrow 21:00: League final", "body": "Fri 16 Oct · Test Club", "url": "/#/upcoming"}
+    assert sent[0] == {"title": "Tomorrow 9:00pm: League final", "body": "Fri 16 Oct · Test Club", "url": "/#/upcoming"}
     assert r.run(table, datetime(2026, 10, 17, 0, 10, tzinfo=UTC)) == 1  # 2 hours before
-    assert sent[1]["title"] == "In 2 hours 21:00: League final"
+    assert sent[1]["title"] == "In 2 hours 9:00pm: League final"
 
 
 def test_push_api_turns_on_tests_and_turns_off(table, sent) -> None:
@@ -126,3 +126,10 @@ def test_wtn_change_message(table, monkeypatch: pytest.MonkeyPatch) -> None:
     wtn._notify_change(table, "owner", 25.34, 25.0, 1)
     wtn._notify_change(table, "owner", 25.0, 25.0, 0)  # nothing new: no message
     assert messages == [("World Tennis Number", "WTN 25.34 → 25.00 · 1 new match")]
+
+
+@pytest.mark.parametrize(
+    ("hour", "minute", "expected"), [(21, 0, "9:00pm"), (0, 5, "12:05am"), (12, 30, "12:30pm"), (9, 0, "9:00am")]
+)
+def test_clock_is_12_hour(hour: int, minute: int, expected: str) -> None:
+    assert r.clock(datetime(2026, 10, 16, hour, minute, tzinfo=UTC)) == expected

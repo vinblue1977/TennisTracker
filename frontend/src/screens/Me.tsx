@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 
 import { addPasskeyUrl, currentEmail, logout } from '../auth';
 import { Notifications } from '../components/Notifications';
+import { formatTime } from '../data';
 import type { Data } from '../types';
 
 export function Me({ data, onCalendar }: { data: Data; onCalendar: (url: string) => Promise<void> }) {
@@ -19,7 +20,8 @@ export function Me({ data, onCalendar }: { data: Data; onCalendar: (url: string)
       setStatus('That link did not work. Use the public link of an iCloud calendar.');
     }
   };
-  const lastRun = sync.lastRunAt ? new Date(sync.lastRunAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'never';
+  const runAt = sync.lastRunAt ? new Date(sync.lastRunAt) : null; // date and time both in the phone's time zone
+  const lastRun = runAt ? `${runAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} at ${formatTime(runAt)}` : 'never';
   return (
     <main class="screen">
       <h1 class="title">Me</h1>

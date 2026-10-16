@@ -26,7 +26,7 @@ export function Home({ data }: { data: Data }) {
             <div class="row">
               <span class="hero-value">{now.point.value.toFixed(2)}</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {now.better !== null && <span class="pill">{now.better > 0 ? `▲ ${now.better.toFixed(2)} better` : `▼ ${Math.abs(now.better).toFixed(2)}`}</span>}
+                {now.better !== null && <span class="pill">{now.better > 0 ? `▼ ${now.better.toFixed(2)} better` : `▲ ${Math.abs(now.better).toFixed(2)}`}</span>}
                 <span class="muted">
                   {now.point.confidence !== null ? `Confidence ${now.point.confidence} · ` : ''}
                   {formatDate(now.point.date)}

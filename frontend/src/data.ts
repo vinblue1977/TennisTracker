@@ -66,11 +66,17 @@ function shiftDays(iso: string, days: number): string {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** "Fri 16 Oct · 21:00" in the phone's time zone; all-day events show just the day. */
+/** "9:00pm" in the phone's time zone. */
+export function formatTime(d: Date): string {
+  const h = d.getHours();
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`;
+}
+
+/** "Fri 16 Oct · 9:00pm" in the phone's time zone; all-day events show just the day. */
 export function formatWhen(startIso: string, allDay: boolean): string {
   const d = new Date(startIso);
   const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(allDay ? { timeZone: 'UTC' } : {}) });
-  return allDay ? day : `${day} · ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  return allDay ? day : `${day} · ${formatTime(d)}`;
 }
 
 /** "Today", "Tomorrow" or "" for a start time, in the phone's time zone. */
