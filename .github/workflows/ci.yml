@@ -145,7 +145,8 @@ jobs:
 
   checks:
     needs: [scope, python, frontend, synth]
-    if: always() && needs.scope.outputs.run_checks == 'true'
+    # Not on cancelled runs (a newer push supersedes them), so they don't show a misleading failure.
+    if: ${{ !cancelled() && needs.scope.outputs.run_checks == 'true' }}
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
     timeout-minutes: 2
     steps:
