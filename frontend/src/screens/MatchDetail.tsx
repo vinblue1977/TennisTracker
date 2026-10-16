@@ -1,15 +1,18 @@
 import { useState } from 'preact/hooks';
 
 import { formatDate, matchDate, ratingHistory, shortName, teamAverage, wtnAfter } from '../data';
+import { forOwner } from '../photos';
 import type { Data, Match } from '../types';
+import { PhotoStrip } from '../components/Photos';
 
 interface Props {
   data: Data;
   id: string;
   onSave: (id: string, note: string, starred: boolean) => Promise<void>;
+  onPhotos: (change?: () => Promise<unknown>) => Promise<void>;
 }
 
-export function MatchDetail({ data, id, onSave }: Props) {
+export function MatchDetail({ data, id, onSave, onPhotos }: Props) {
   const m = data.matches.find((x) => x.id === id);
   const [note, setNote] = useState(m?.note ?? '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -76,6 +79,10 @@ export function MatchDetail({ data, id, onSave }: Props) {
             </span>
           </div>
         )}
+      </section>
+
+      <section class="card">
+        <PhotoStrip owner={`match:${m.id}`} photos={forOwner(data.photos, `match:${m.id}`)} onPhotos={onPhotos} />
       </section>
 
       <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
