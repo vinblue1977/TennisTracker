@@ -35,7 +35,7 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
-  const [profile, ratings, matches, upcoming, trophies] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming(), api.trophies()]);
+  const [profile, ratings, matches, upcoming, trophies] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming(), api.trophies().catch(() => ({ trophies: [], suggestions: [] }))]);
   return { profile, ratings, matches, upcoming, trophies, vapidKey: config.vapidPublicKey ?? '' };
 }
 
@@ -82,8 +82,8 @@ export function App() {
   // Trophy changes can add, remove or hide suggestions, so reload the list from the server.
   const onTrophies = async (change: () => Promise<unknown>) => {
     await change();
-    const trophies = await api.trophies();
-    setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
+    const trophies = await api.trophies().catch(() => null); // the save worked; don't report a failed reload as a failed save
+    if (trophies) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
   };
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (

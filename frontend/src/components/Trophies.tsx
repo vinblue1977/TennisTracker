@@ -65,6 +65,7 @@ function TrophyForm({ form, onSave, onCancel, onDelete }: { form: Form; onSave: 
 export function Trophies({ data, onChange }: Props) {
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const input = (f: Form): TrophyInput => ({ event: f.event.trim(), date: f.date, result: f.result, note: f.note.trim(), ...(f.suggestion ? { suggestion: f.suggestion } : {}) });
   const save = async (f: Form) => {
     if (mock()) return setForm(null);
@@ -73,13 +74,15 @@ export function Trophies({ data, onChange }: Props) {
   };
   const act = async (change: () => Promise<unknown>) => {
     setError('');
+    setBusy(true);
     try {
       if (!mock()) await onChange(change);
     } catch {
       setError('Could not save. Try again.');
     }
+    setBusy(false);
   };
-  const accept = (s: Suggestion) => act(() => api.addTrophy({ event: s.event, date: s.date, result: 'winner', note: s.partner ? `with ${s.partner}` : '', suggestion: s.id }));
+  const accept = (s: Suggestion) => busy || act(() => api.addTrophy({ event: s.event, date: s.date, result: 'winner', note: s.partner ? `with ${s.partner}` : '', suggestion: s.id }));
   const count = data.trophies.length;
   return (
     <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -108,10 +111,10 @@ export function Trophies({ data, onChange }: Props) {
             </div>
           </div>
           <div class="row">
-            <button class="button grow" type="button" onClick={() => accept(s)}>
+            <button class="button grow" type="button" disabled={busy} onClick={() => accept(s)}>
               Add trophy
             </button>
-            <button class="button quiet" type="button" onClick={() => act(() => api.dismissSuggestion(s.id))}>
+            <button class="button quiet" type="button" disabled={busy} onClick={() => act(() => api.dismissSuggestion(s.id))}>
               Dismiss
             </button>
           </div>

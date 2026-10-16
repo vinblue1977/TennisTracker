@@ -223,3 +223,10 @@ def test_trophy_edit_keeps_suggestion_link(table) -> None:
     _, made = _add(suggestion="2026#Club Open")
     call("PUT /me/trophies/{id}", match_id=made["id"], body='{"event":"Club Open","date":"2026-05-02","result":"winner"}')
     assert next(i for i in table.scan()["Items"] if i["SK"].startswith("TROPHY#"))["suggestion"] == "2026#Club Open"
+
+
+def test_trophy_date_must_be_canonical_and_double_tap_is_rejected(table) -> None:
+    for bad in ("20260501", "2026-W18-5"):
+        assert _add(date=bad)[0] == 400, bad
+    assert _add(suggestion="2026#Club Open")[0] == 200
+    assert _add(suggestion="2026#Club Open")[0] == 409

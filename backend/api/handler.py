@@ -44,7 +44,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _push(table, user, route, event)
     if route in ("GET /me/widget", "POST /me/widget", "DELETE /me/widget"):
         return _widget_token(table, user, route)
-    if "/me/trophies" in route:
+    if route.partition(" ")[2].startswith("/me/trophies"):
         return _trophies(table, user, route, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
     if route == "PUT /me/ratings":
         return _put_ratings(table, user, event.get("body"))
@@ -143,15 +143,18 @@ def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | Non
     if isinstance(data, str):
         return _json(400, {"error": data})
     if old:
-        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})  # the date is part of the key
         data.setdefault("suggestion", old.get("suggestion"))
         data = {k: v for k, v in data.items() if v is not None}
+    elif data.get("suggestion") and any(i.get("suggestion") == data["suggestion"] for i in mine):
+        return _json(409, {"error": "already added"})  # a double tap
     elif len(mine) >= trophies.MAX_TROPHIES:
         return _json(400, {"error": f"up to {trophies.MAX_TROPHIES} trophies"})
     else:
         trophy_id = trophies.new_id()
     item = {**trophies.key(user, trophy_id, data["date"]), **data}
     table.put_item(Item=item)
+    if old and old["SK"] != item["SK"]:  # the date is part of the key; write the new one first
+        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
     return _json(200, trophies.public(item))
 
 
