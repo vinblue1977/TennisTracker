@@ -44,7 +44,7 @@ jobs:
           code="$(grep -Ev '^(docs/|[^/]+\.md$)' <<<"$changed" || true)"
           echo "run_checks=$([ -z "$changed" ] || [ -n "$code" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           # Python packages only change with the requirements files; the weekly run and every deploy still audit.
-          echo "deps_changed=$(grep -qE '^requirements.*\.txt$' <<<"$changed" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "deps_changed=$(grep -qE '(^|/)requirements[^/]*\.txt$' <<<"$changed" && echo true || echo false)" >> "$GITHUB_OUTPUT"
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
