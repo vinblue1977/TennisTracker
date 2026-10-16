@@ -82,7 +82,7 @@ export function MatchDetail({ data, id, onSave, onPhotos, onMatches }: Props) {
     <main class="screen">
       <div class="row" style={{ justifyContent: 'space-between' }}>
         <a class="back" href="#/matches">‹ Matches</a>
-        {m.id.startsWith('local:') && (
+        {m.source === 'LOCAL' && (
           <button class="button quiet" type="button" style={{ minHeight: '36px' }} onClick={() => setEditing(true)}>
             Edit
           </button>

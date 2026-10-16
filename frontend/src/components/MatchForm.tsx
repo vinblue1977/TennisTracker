@@ -21,12 +21,15 @@ export function MatchForm({ initial, onSave, onCancel, onDelete }: { initial: Ma
     setStatus('Saving…');
     try {
       await action();
+      setStatus('');
     } catch {
       setStatus('Could not save. Try again.');
     }
   };
+  const saving = status === 'Saving…';
   const [first = '', second = ''] = f.opponents;
-  const valid = f.event.trim() !== '' && f.date !== '' && f.partner.trim() !== '' && first.trim() !== '' && f.score.trim() !== '';
+  const names = [first, second].filter((n) => n.trim() !== '');
+  const valid = f.event.trim() !== '' && f.date !== '' && f.partner.trim() !== '' && names.length > 0 && f.score.trim() !== '';
   const input = (value: string, set: (v: string) => void, placeholder: string, max = 60) => (
     <input type="text" maxLength={max} autoComplete="off" placeholder={placeholder} value={value} onInput={(e) => set(e.currentTarget.value)} />
   );
@@ -34,7 +37,7 @@ export function MatchForm({ initial, onSave, onCancel, onDelete }: { initial: Ma
     <div class="card" style={{ background: 'var(--raised)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <label style={field}>
         <span class="muted">Date</span>
-        <input type="date" max={today()} value={f.date} onInput={(e) => setF({ ...f, date: e.currentTarget.value })} />
+        <input type="date" max={onDelete ? undefined : today()} value={f.date} onInput={(e) => setF({ ...f, date: e.currentTarget.value })} />
       </label>
       <label style={field}>
         <span class="muted">Event</span>
@@ -47,7 +50,7 @@ export function MatchForm({ initial, onSave, onCancel, onDelete }: { initial: Ma
       <div style={field}>
         <span class="muted">Opponents</span>
         {input(first, (n) => setF({ ...f, opponents: [n, second] }), 'Name')}
-        {input(second, (n) => setF({ ...f, opponents: [first, n] }), 'Name (optional)')}
+        {input(second, (n) => setF({ ...f, opponents: [first, n] }), 'Second opponent (optional)')}
       </div>
       <label style={field}>
         <span class="muted">Score, your side first</span>
@@ -78,14 +81,14 @@ export function MatchForm({ initial, onSave, onCancel, onDelete }: { initial: Ma
           <option value="draw">Draw / unfinished</option>
         </select>
       </label>
-      <button class="button" type="button" disabled={!valid} onClick={() => run(() => onSave({ ...f, opponents: f.opponents.filter((n) => n.trim() !== '') }))}>
+      <button class="button" type="button" disabled={!valid || saving} onClick={() => run(() => onSave({ ...f, opponents: names }))}>
         Save match
       </button>
       <button class="button quiet" type="button" onClick={onCancel}>
         Cancel
       </button>
       {onDelete && (
-        <button class="button quiet" type="button" style={{ color: 'var(--loss-text)' }} onClick={() => confirm('Delete this match?') && run(onDelete)}>
+        <button class="button quiet" type="button" style={{ color: 'var(--loss-text)' }} disabled={saving} onClick={() => confirm('Delete this match?') && run(onDelete)}>
           Delete match
         </button>
       )}

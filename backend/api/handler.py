@@ -133,17 +133,18 @@ def _local_match(table: Any, user: str, route: str, match_id: str, body: str | N
         if not old:
             return _json(404, {"error": "no such logged match"})  # synced matches can't be changed
     if route == "DELETE /me/matches/{id}" and old:
-        _delete_photos(table, user, [i for i in _items(table, user, "PHOTO#") if photos.owner_of(i) == f"match:{match_id}"])
         table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
         table.delete_item(Key={"PK": old["PK"], "SK": f"EXTRA#{match_id}"})
+        _delete_photos(table, user, [i for i in _items(table, user, "PHOTO#") if photos.owner_of(i) == f"match:{match_id}"])
         return _json(200, {"id": match_id})
     data = local_matches.parse(body)
     if isinstance(data, str):
         return _json(400, {"error": data})
     match_id = match_id if old else local_matches.new_id()
-    if old:  # the date is part of the key, so a new date moves the item
+    new = local_matches.item(user, match_id, data)
+    table.put_item(Item=new)  # first, so a failure never loses the match
+    if old and old["SK"] != new["SK"]:  # the date is part of the key, so a new date moves the item
         table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
-    table.put_item(Item=local_matches.item(user, match_id, data))
     return _json(200, {"id": match_id})
 
 
