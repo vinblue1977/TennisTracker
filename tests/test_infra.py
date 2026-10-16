@@ -13,6 +13,7 @@ from infra.stack import TennisTrackerStack
 REPO = "test-owner@1/test-repo@2"
 # The same feature flags as a real synth, so tests render the template the way a deploy does.
 CDK_CONTEXT = {k: v for k, v in json.loads(Path("cdk.json").read_text())["context"].items() if k.startswith("@")}
+CDK_CONTEXT["siteDir"] = "tests/fixtures/site"  # a stand-in app, so tests don't need a frontend build
 
 
 def _stack(context: dict | None = None, account: str | None = "123456789012") -> TennisTrackerStack:
@@ -110,3 +111,25 @@ def test_wtn_sync_runs_daily_and_alerts_on_crash() -> None:
 def test_rejects_malformed_repo() -> None:
     with pytest.raises(ValueError, match="githubRepo"):
         _stack({"githubRepo": "not a repo"})
+
+
+def test_api_routes_require_sign_in_and_site_is_private() -> None:
+    template = Template.from_stack(_stack())
+    routes = template.find_resources("AWS::ApiGatewayV2::Route")
+    assert len(routes) == 4 and all(r["Properties"]["AuthorizationType"] == "JWT" for r in routes.values())
+    template.has_resource_properties(
+        "AWS::S3::Bucket",
+        {
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": True,
+                "BlockPublicPolicy": True,
+                "IgnorePublicAcls": True,
+                "RestrictPublicBuckets": True,
+            }
+        },
+    )
+    template.has_resource_properties("AWS::Cognito::UserPool", {"AdminCreateUserConfig": {"AllowAdminCreateUserOnly": True}})
+    template.has_resource_properties(
+        "AWS::CloudFront::Distribution",
+        Match.object_like({"DistributionConfig": Match.object_like({"DefaultRootObject": "index.html"})}),
+    )

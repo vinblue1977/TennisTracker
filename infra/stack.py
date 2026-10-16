@@ -1,4 +1,4 @@
-"""The Tennis Tracker stack: data table, daily WTN sync, alerts and the GitHub deploy role."""
+"""The Tennis Tracker stack: data table, daily WTN sync, sign-in, API, hosting and the GitHub deploy role."""
 
 import re
 
@@ -14,6 +14,8 @@ from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sns_subscriptions as subs
 from cdk_nag import NagPackSuppression, NagSuppressions, RegexAppliesTo
 from constructs import Construct
+
+from infra.web import Web
 
 GITHUB = "token.actions.githubusercontent.com"
 
@@ -36,6 +38,7 @@ class TennisTrackerStack(Stack):
         CfnOutput(self, "TableName", value=self.table.table_name)
 
         self._wtn_sync()
+        Web(self, "Web", table=self.table, site_dir=self.node.try_get_context("siteDir") or "frontend/dist")
 
         github_repo: str = self.node.try_get_context("githubRepo") or ""
         if github_repo:

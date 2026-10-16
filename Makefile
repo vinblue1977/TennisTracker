@@ -1,4 +1,5 @@
 PYTHON ?= .venv/bin/python
+SITE_DIR ?= frontend/dist
 # The CDK CLI pinned in package-lock.json (`make install` runs npm ci).
 CDK ?= npx --no-install cdk
 
@@ -18,7 +19,7 @@ lint:               ## Python: ruff (with Bandit security rules) and pyright typ
 	npx --no-install pyright
 
 test:
-	$(PYTHON) -m pytest
+	$(PYTHON) -m pytest -n auto
 
 audit:              ## Check dependencies for known vulnerabilities
 	$(PYTHON) -m pip_audit -r requirements-dev.txt
@@ -31,7 +32,7 @@ privacy:            ## Fail on TennisID-shaped strings or data exports in tracke
 	scripts/check_personal_data.sh
 
 synth:              ## Synthesize CloudFormation and run cdk-nag security checks
-	. .venv/bin/activate && $(CDK) synth --quiet
+	. .venv/bin/activate && $(CDK) synth --quiet -c siteDir=$(SITE_DIR)
 
 diff:
 	. .venv/bin/activate && $(CDK) diff
