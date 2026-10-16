@@ -1,17 +1,17 @@
 name: Auto-merge
 
-# Turns on squash auto-merge for every PR from this repo (mine and Dependabot's), so a PR merges the moment the
-# required checks pass and nobody has to remember. pull_request_target gives Dependabot a write token; the job
-# never checks out or runs PR code, only calls the GitHub API, which keeps that safe.
+# Turns on squash auto-merge for every PR from this repo, so a PR merges the moment the required checks pass and
+# nobody has to remember. Plain pull_request (zizmor rejects pull_request_target); Dependabot PRs get a read-only
+# token there, so they are skipped and get `gh pr merge --auto` by hand.
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, ready_for_review]
 
 permissions: {}
 
 jobs:
   enable:
-    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
