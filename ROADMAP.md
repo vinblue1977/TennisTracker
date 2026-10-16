@@ -55,3 +55,4 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [ ] ITF reply on API access; drop the curl User-Agent if granted
 - [ ] Renew the outside-PR block before 15 Apr 2027
 - [ ] Re-archive the Access Analyzer finding if the deploy role is replaced
+- [ ] Move the Lambdas to Python 3.15 once it is generally available (preview since Aug 2026)
