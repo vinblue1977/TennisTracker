@@ -256,6 +256,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
+          mask-aws-account-id: true  # public repo: logs are public
       - name: Deploy
         run: |
           uv venv --seed --python "$(which python)" .venv
