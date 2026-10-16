@@ -103,11 +103,12 @@ export function byYear(matches: Match[]): (Tally & { year: string })[] {
   return years.map((year) => ({ year, name: year, ...record(matches.filter((m) => matchDate(m).startsWith(year))) }));
 }
 
-/** Record against or with each person, most matches first. */
+/** Record against or with each person, most matches first. Keyed by short name, so the spreadsheet's "Kesavan J" and WTN's full name are one person. */
 export function tally(matches: Match[], who: (m: Match) => Player[]): Tally[] {
   const rows = new Map<string, Tally>();
   for (const m of matches) {
-    for (const { name } of who(m)) {
+    for (const player of who(m)) {
+      const name = shortName(player.name);
       const row = rows.get(name) ?? { name, wins: 0, losses: 0 };
       if (m.won) row.wins++;
       else row.losses++;

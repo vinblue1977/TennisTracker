@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 
-import { byYear, playedDoubles, record, shortName, tally, winPct } from '../data';
+import { byYear, playedDoubles, record, tally, winPct } from '../data';
 import type { Tally } from '../data';
 import type { Data } from '../types';
 
@@ -20,7 +20,7 @@ function People({ title, rows }: { title: string; rows: Tally[] }) {
       {shown.map((r) => (
         <a key={r.name} class="stat-row" href={`#/with/${encodeURIComponent(r.name)}`}>
           <span class="grow">
-            {shortName(r.name)}
+            {r.name}
             <span class="bar">
               <i style={{ width: `${winPct(r)}%` }} />
             </span>

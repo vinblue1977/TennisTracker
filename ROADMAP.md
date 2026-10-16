@@ -19,6 +19,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] iPhone Home Screen widget (WTN + next match) via Scriptable and a revocable token
 - [x] Trophies on the Me tab: added by hand, or suggested when you win every match of an event
 - [x] Tappable Home cards: WTN → rating history, Win–loss → Matches, Upset wins → filtered list, Next match → Upcoming
+- [x] Stats screen (doubles): win % by year, partners, head-to-head; from Home Win–loss and Me
 
 ## Next: WTN dashboard on iPhone
 
@@ -28,7 +29,6 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 
 - [ ] Log local match + one-time spreadsheet import
 - [ ] Photos on trophies and matches
-- [ ] Stats: partners, head-to-head, win % by year, upset wins, best matches
 - [ ] Repeating calendar events (e.g. weekly league nights)
 - [ ] Desktop layout
 
