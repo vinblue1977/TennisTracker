@@ -243,6 +243,7 @@ def bucket(table, monkeypatch: pytest.MonkeyPatch):
 def _photo(s3, owner: str = "match:wtn:m1", upload: bool = True) -> tuple[int, dict]:
     status, signed = call("POST /me/photos/upload-url", body=json.dumps({"owner": owner}))
     assert status == 200 and signed["fields"]["Content-Type"] == "image/jpeg" and "photos" in signed["url"]
+    assert signed["url"].startswith("https://photos.s3."), signed["url"]  # the CSP only allows the bucket's own host
     if upload:
         s3.put_object(Bucket="photos", Key=f"owner/{signed['id']}.jpg", Body=b"\xff\xd8\xff\xe0jpeg")
     return call("POST /me/photos", body=json.dumps({"owner": owner, "id": signed["id"]}))
