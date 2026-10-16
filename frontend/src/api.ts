@@ -28,6 +28,8 @@ export const api = {
   ratings: () => call<{ ratings: Rating[] }>('/me/ratings').then((r) => r.ratings),
   matches: () => call<{ matches: Match[] }>('/me/matches').then((r) => r.matches),
   upcoming: () => call<{ upcoming: Upcoming[] }>('/me/upcoming').then((r) => r.upcoming),
+  saveRatings: (ratings: { utr?: number | null; ntrp?: number | null }) =>
+    call<{ utr: number | null; ntrp: number | null }>('/me/ratings', { method: 'PUT', body: JSON.stringify(ratings) }),
   saveCalendar: (url: string) => call<{ connected: boolean }>('/me/calendar', { method: 'PUT', body: JSON.stringify({ url }) }),
   pushStatus: (endpoint: string) => call<{ devices: number; thisDevice: boolean }>(`/me/push?endpoint=${encodeURIComponent(endpoint)}`),
   pushOn: (subscription: PushSubscriptionJSON, timeZone: string) => call<{ devices: number }>('/me/push', { method: 'PUT', body: JSON.stringify({ ...subscription, timeZone }) }),

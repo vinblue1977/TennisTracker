@@ -5,7 +5,49 @@ import { Notifications } from '../components/Notifications';
 import { formatTime } from '../data';
 import type { Data } from '../types';
 
-export function Me({ data, onCalendar }: { data: Data; onCalendar: (url: string) => Promise<void> }) {
+type Ratings = { utr: number | null; ntrp: number | null };
+
+function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Ratings) => Promise<void> }) {
+  const [utr, setUtr] = useState(profile.utr != null ? String(profile.utr) : '');
+  const [ntrp, setNtrp] = useState(profile.ntrp != null ? String(profile.ntrp) : '');
+  const [status, setStatus] = useState('');
+  const submit = async () => {
+    const u = utr.trim() === '' ? null : Number(utr);
+    const n = ntrp.trim() === '' ? null : Number(ntrp);
+    if ((u !== null && !(u >= 1 && u <= 16.5)) || (n !== null && !(n >= 1 && n <= 7 && n * 2 === Math.round(n * 2)))) {
+      setStatus('UTR is 1 to 16.5. NTRP is 1.0 to 7.0 in halves (e.g. 3.5).');
+      return;
+    }
+    setStatus('Saving…');
+    try {
+      await onSave({ utr: u, ntrp: n });
+      setStatus('Saved');
+    } catch {
+      setStatus('Could not save. Try again.');
+    }
+  };
+  return (
+    <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <span class="eyebrow">Other ratings (by hand)</span>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <span class="muted">Doubles UTR</span>
+        <input type="text" inputMode="decimal" autoComplete="off" placeholder="e.g. 7.25" value={utr} onInput={(e) => setUtr(e.currentTarget.value)} />
+      </label>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <span class="muted">NTRP</span>
+        <input type="text" inputMode="decimal" autoComplete="off" placeholder="e.g. 3.5" value={ntrp} onInput={(e) => setNtrp(e.currentTarget.value)} />
+      </label>
+      <button class="button" type="button" onClick={submit}>
+        Save ratings
+      </button>
+      <span class="muted" role="status">
+        {status}
+      </span>
+    </section>
+  );
+}
+
+export function Me({ data, onCalendar, onRatings }: { data: Data; onCalendar: (url: string) => Promise<void>; onRatings: (r: Ratings) => Promise<void> }) {
   const sync = data.profile.sync;
   const calendar = data.profile.calendar;
   const [link, setLink] = useState('');
@@ -40,6 +82,7 @@ export function Me({ data, onCalendar }: { data: Data; onCalendar: (url: string)
           </span>
         </div>
       </section>
+      <Manual profile={data.profile} onSave={onRatings} />
       <Notifications vapidKey={data.vapidKey ?? ''} />
       <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <span class="eyebrow">Tennis calendar</span>

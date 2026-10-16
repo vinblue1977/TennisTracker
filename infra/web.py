@@ -202,6 +202,7 @@ class Web(Construct):
         for method, path in (
             (apigw.HttpMethod.GET, "/me/profile"),
             (apigw.HttpMethod.GET, "/me/ratings"),
+            (apigw.HttpMethod.PUT, "/me/ratings"),
             (apigw.HttpMethod.GET, "/me/matches"),
             (apigw.HttpMethod.PUT, "/me/matches/{id}/extras"),
             (apigw.HttpMethod.GET, "/me/upcoming"),

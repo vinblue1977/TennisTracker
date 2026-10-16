@@ -36,6 +36,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _json(200, {"upcoming": [_public(i) for i in _items(table, user, "UPCOMING#")]})
     if route in ("GET /me/push", "PUT /me/push", "DELETE /me/push", "POST /me/push/test"):
         return _push(table, user, route, event)
+    if route == "PUT /me/ratings":
+        return _put_ratings(table, user, event.get("body"))
     if route == "PUT /me/calendar":
         return _put_calendar(table, user, event.get("body"))
     if route == "PUT /me/matches/{id}/extras":
@@ -68,6 +70,8 @@ def _profile(table: Any, user: str) -> dict[str, Any]:
     return {
         "tennisId": f"{tennis_id[:3]}•••{tennis_id[-4:]}" if tennis_id else None,  # masked
         "calendar": {"connected": "calendarUrl" in profile, **{k: calendar.get(k) for k in ("status", "lastRunAt", "upcoming")}},
+        "utr": profile.get("utrDoubles"),
+        "ntrp": profile.get("ntrp"),
         "sync": {k: sync.get(k) for k in ("status", "lastRunAt", "latestDate", "latestValue", "matchCount")},
     }
 
@@ -99,6 +103,34 @@ def _put_extras(table: Any, user: str, match_id: str, body: str | None) -> dict[
         return _json(404, {"error": "no such match"})
     table.put_item(Item={"PK": f"USER#{user}", "SK": f"EXTRA#{match_id}", "note": note, "starred": starred})
     return _json(200, {"id": match_id, "note": note, "starred": starred})
+
+
+def _put_ratings(table: Any, user: str, body: str | None) -> dict[str, Any]:
+    """Hand-entered doubles UTR (1-16.5) and NTRP (1.0-7.0 in halves); null clears one."""
+    try:
+        data = json.loads(body or "{}")
+    except ValueError:
+        return _json(400, {"error": "body must be JSON"})
+    if not isinstance(data, dict) or not data.keys() <= {"utr", "ntrp"} or not data:
+        return _json(400, {"error": 'body must be {"utr": 8.5, "ntrp": 4.0}'})
+    limits = {"utr": (1.0, 16.5, 0.01), "ntrp": (1.0, 7.0, 0.5)}
+    attrs = {"utr": "utrDoubles", "ntrp": "ntrp"}
+    sets, removes, values = [], [], {}
+    for field, value in data.items():
+        low, high, step = limits[field]
+        if value is None:
+            removes.append(attrs[field])
+            continue
+        valid = isinstance(value, int | float) and not isinstance(value, bool) and low <= value <= high
+        if not valid or abs(round(value / step) * step - value) > 1e-9:
+            return _json(400, {"error": f"{field}: a number from {low} to {high} in steps of {step}"})
+        sets.append(f"{attrs[field]} = :{field}")
+        values[f":{field}"] = Decimal(str(value))
+    expression = ("SET " + ", ".join(sets) if sets else "") + (" REMOVE " + ", ".join(removes) if removes else "")
+    kwargs: dict[str, Any] = {"ExpressionAttributeValues": values} if values else {}
+    table.update_item(Key={"PK": f"USER#{user}", "SK": "PROFILE"}, UpdateExpression=expression.strip(), **kwargs)
+    profile = table.get_item(Key={"PK": f"USER#{user}", "SK": "PROFILE"}).get("Item", {})
+    return _json(200, {"utr": profile.get("utrDoubles"), "ntrp": profile.get("ntrp")})
 
 
 def _put_calendar(table: Any, user: str, body: str | None) -> dict[str, Any]:

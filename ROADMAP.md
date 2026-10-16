@@ -15,6 +15,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Calendar sync: hourly from a public iCloud calendar; Next match on Home; Upcoming tab
 - [x] Dark sign-in page
 - [x] Push notifications: match reminders (8:00pm the evening before, 2 h before), WTN changes, test button
+- [x] Doubles UTR and NTRP entered by hand (Me tab), shown on Home
 
 ## Next: WTN dashboard on iPhone
 
@@ -27,7 +28,6 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [ ] Log local match + one-time spreadsheet import
 - [ ] Stats: partners, head-to-head, win % by year, upset wins, best matches
 - [ ] Repeating calendar events (e.g. weekly league nights)
-- [ ] UTR and NTRP entered by hand
 - [ ] Desktop layout
 
 ## Later
@@ -37,6 +37,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [ ] Tennis Warehouse deal watchlist (check their terms first)
 - [ ] Match insights with a small Claude model
 - [ ] Friends, shared results, mini league
+- [ ] iPhone Home Screen widget (WTN + next match); web apps can't add widgets, so needs a small native app or a Scriptable/Shortcuts widget
 - [ ] USTA Connect sync if approved
 
 ## Watch
