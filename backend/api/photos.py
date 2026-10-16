@@ -6,7 +6,8 @@ from typing import Any
 
 MAX_PER_OWNER = 10
 MAX_BYTES = 3_000_000
-LINK_SECONDS = 3600
+LINK_SECONDS = 900
+JPEG_START = b"\xff\xd8\xff"
 PHOTO_ID = re.compile(r"^p[0-9a-f]{12}$")
 OWNER = re.compile(r"^(match|trophy):([\w.:-]{1,80})$")
 

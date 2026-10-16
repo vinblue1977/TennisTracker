@@ -156,13 +156,19 @@ def test_photo_bucket_is_private_and_kept() -> None:
             "Properties": Match.object_like(
                 {
                     "PublicAccessBlockConfiguration": Match.object_like({"BlockPublicAcls": True, "RestrictPublicBuckets": True}),
-                    "CorsConfiguration": Match.object_like(
-                        {"CorsRules": [Match.object_like({"AllowedMethods": ["POST", "GET"]})]}
-                    ),
+                    "CorsConfiguration": Match.object_like({"CorsRules": [Match.object_like({"AllowedMethods": ["POST"]})]}),
+                    "VersioningConfiguration": {"Status": "Enabled"},
                 }
             ),
         },
     )
+
+
+def test_api_can_only_add_view_and_delete_photos() -> None:
+    policies = _template().find_resources("AWS::IAM::Policy")
+    statements = [s for p in policies.values() for s in p["Properties"]["PolicyDocument"]["Statement"]]
+    photo = [s for s in statements if "PhotoBucket" in str(s.get("Resource"))]
+    assert [sorted(s["Action"]) for s in photo] == [["s3:DeleteObject", "s3:GetObject", "s3:PutObject"]]
 
 
 def test_sign_in_page_is_dark() -> None:

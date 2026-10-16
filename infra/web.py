@@ -11,6 +11,7 @@ from aws_cdk import aws_cloudfront as cloudfront
 from aws_cdk import aws_cloudfront_origins as origins
 from aws_cdk import aws_cognito as cognito
 from aws_cdk import aws_dynamodb as dynamodb
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_s3 as s3
@@ -115,13 +116,20 @@ class Web(Construct):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             encryption=s3.BucketEncryption.S3_MANAGED,
             enforce_ssl=True,
+            minimum_tls_version=1.2,
+            versioned=True,  # an overwritten or deleted photo can be restored for a week
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    noncurrent_version_expiration=Duration.days(7), abort_incomplete_multipart_upload_after=Duration.days(1)
+                )
+            ],
             object_ownership=s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
             removal_policy=RemovalPolicy.RETAIN,  # your photos outlive a stack teardown
             cors=[
                 s3.CorsRule(
-                    allowed_origins=[site_url, DEV_ORIGIN],
-                    allowed_methods=[s3.HttpMethods.POST, s3.HttpMethods.GET],
-                    allowed_headers=["*"],
+                    allowed_origins=[site_url],  # the app only, not localhost
+                    allowed_methods=[s3.HttpMethods.POST],
+                    allowed_headers=["Content-Type"],
                     max_age=3600,
                 )
             ],
@@ -208,7 +216,11 @@ class Web(Construct):
             log_group=logs.LogGroup(self, "ApiLogs", retention=logs.RetentionDays.TWO_WEEKS),
         )
         table.grant_read_write_data(fn)
-        photos.grant_read_write(fn)  # sign uploads and links, check and delete photos
+        fn.add_to_role_policy(  # photos only: add, view and delete objects (no listing, no bucket settings)
+            iam.PolicyStatement(
+                actions=["s3:PutObject", "s3:GetObject", "s3:DeleteObject"], resources=[photos.arn_for_objects("*")]
+            )
+        )
         grant_vapid(fn)  # "send a test"
         calendar_fn.grant_invoke(fn)  # sync right after the calendar link is saved
         api = apigw.HttpApi(
@@ -333,7 +345,7 @@ class Web(Construct):
                 reason(
                     "AwsSolutions-IAM5",
                     "Photos: object-level access to the photo bucket only",
-                    [RegexAppliesTo(regex=r"/^(Action::s3:.*|Resource::.*PhotoBucket.*\/\*)$/g")],
+                    [RegexAppliesTo(regex=r"/^Resource::.*PhotoBucket.*\/\*$/g")],
                 ),
             ],
             apply_to_children=True,
