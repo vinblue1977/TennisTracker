@@ -46,6 +46,19 @@ export function Home({ data }: { data: Data }) {
         )}
       </section>
 
+      <div class="grid2">
+        <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} aria-label="Doubles UTR">
+          <span class="eyebrow">UTR · Doubles</span>
+          <span class="num" style={{ fontSize: '32px' }}>{typeof data.profile.utr === 'number' ? data.profile.utr.toFixed(2) : '–'}</span>
+          {typeof data.profile.utr !== 'number' && <a href="#/me">Add on Me</a>}
+        </section>
+        <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} aria-label="NTRP">
+          <span class="eyebrow">NTRP</span>
+          <span class="num" style={{ fontSize: '32px' }}>{typeof data.profile.ntrp === 'number' ? data.profile.ntrp.toFixed(1) : '–'}</span>
+          {typeof data.profile.ntrp !== 'number' && <a href="#/me">Add on Me</a>}
+        </section>
+      </div>
+
       {data.upcoming[0] && <UpcomingCard u={data.upcoming[0]} highlight />}
 
       <div class="grid2">

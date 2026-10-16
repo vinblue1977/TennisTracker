@@ -22,7 +22,7 @@ export const mockData: Data = {
     { SK: 'UPCOMING#2026-10-17T02:00Z#a', title: 'City Doubles Final', location: 'Test Club, Court 3', start: '2026-10-17T02:00:00+00:00', end: '2026-10-17T04:00:00+00:00', allDay: false },
     { SK: 'UPCOMING#2026-10-17T14:00Z#b', title: 'Evening League match', location: 'Sample Park', start: '2026-10-17T14:00:00+00:00', end: '2026-10-17T15:30:00+00:00', allDay: false },
   ],
-  profile: { tennisId: 'TES•••0001', calendar: { connected: true, status: 'ok', upcoming: 2 }, sync: { status: 'ok', lastRunAt: '2026-10-16T11:00:05Z', latestDate: '2026-10-05', latestValue: 25, matchCount: 6 } },
+  profile: { tennisId: 'TES•••0001', utr: 7.25, ntrp: 3.5, calendar: { connected: true, status: 'ok', upcoming: 2 }, sync: { status: 'ok', lastRunAt: '2026-10-16T11:00:05Z', latestDate: '2026-10-05', latestValue: 25, matchCount: 6 } },
   ratings: [
     ['2010-01-01', 29.1],
     ['2025-01-13', 27.87],

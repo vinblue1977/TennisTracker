@@ -75,6 +75,10 @@ export function App() {
     const [profile, upcoming] = import.meta.env.DEV && isMock() ? [data.profile, data.upcoming] : await Promise.all([api.profile(), api.upcoming()]);
     setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, profile, upcoming } } : prev));
   };
+  const onRatings = async (ratings: { utr: number | null; ntrp: number | null }) => {
+    const saved = import.meta.env.DEV && isMock() ? ratings : await api.saveRatings(ratings);
+    setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, profile: { ...prev.data.profile, ...saved } } } : prev));
+  };
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
@@ -83,7 +87,7 @@ export function App() {
   ) : hash === '#/upcoming' ? (
     <Matches data={data} upcomingTab />
   ) : hash === '#/me' ? (
-    <Me data={data} onCalendar={onCalendar} />
+    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} />
   ) : (
     <Home data={data} />
   );

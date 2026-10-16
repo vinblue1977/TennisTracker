@@ -102,3 +102,20 @@ def test_calendar_link_is_validated_saved_and_removed(table) -> None:
     assert call("PUT /me/calendar", body='{"url": ""}')[1] == {"connected": False}
     assert call("GET /me/upcoming")[1]["upcoming"] == []
     assert "calendarUrl" not in table.get_item(Key={"PK": "USER#owner", "SK": "PROFILE"})["Item"]
+
+
+def test_hand_entered_ratings_are_validated_saved_and_cleared(table) -> None:
+    for bad in ('{"utr": 17}', '{"ntrp": 3.7}', '{"utr": "8"}', '{"utr": true}', "{}", '{"x": 1}', "[]"):
+        assert call("PUT /me/ratings", body=bad)[0] == 400, bad
+    assert call("PUT /me/ratings", body='{"utr": 7.25, "ntrp": 3.5}') == (200, {"utr": 7.25, "ntrp": 3.5})
+    profile = call("GET /me/profile")[1]
+    assert profile["utr"] == 7.25 and profile["ntrp"] == 3.5 and profile["tennisId"] == "TES•••D-ME"
+    assert call("PUT /me/ratings", body='{"utr": null}')[1] == {"utr": None, "ntrp": 3.5}
+
+
+def test_ratings_accept_boundaries_and_reject_off_step_values(table) -> None:
+    assert call("PUT /me/ratings", body='{"utr": 1, "ntrp": 7.0}')[0] == 200
+    assert call("PUT /me/ratings", body='{"utr": 16.5, "ntrp": 1.0}')[0] == 200
+    assert call("PUT /me/ratings", body='{"utr": null, "ntrp": null}')[1] == {"utr": None, "ntrp": None}
+    for bad in ('{"utr": 7.255}', '{"utr": NaN}', '{"ntrp": Infinity}', '{"utr": 0.99}'):
+        assert call("PUT /me/ratings", body=bad)[0] == 400, bad
