@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       run_checks: ${{ steps.diff.outputs.run_checks }}
+      deps_changed: ${{ steps.diff.outputs.deps_changed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         if: github.event_name == 'pull_request'
@@ -36,12 +37,14 @@ jobs:
           persist-credentials: false
       - id: diff
         run: |
-          if [ "$EVENT" != pull_request ]; then echo "run_checks=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$EVENT" != pull_request ]; then printf 'run_checks=true\ndeps_changed=true\n' >> "$GITHUB_OUTPUT"; exit 0; fi
           # --no-renames: a code file moved into docs/ shows as deleted from its old path, so it counts as code.
           changed="$(git diff --name-only --no-renames "$BASE...$HEAD")"
           echo "$changed"
           code="$(grep -Ev '^(docs/|[^/]+\.md$)' <<<"$changed" || true)"
           echo "run_checks=$([ -z "$changed" ] || [ -n "$code" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          # Python packages only change with the requirements files; the weekly run and every deploy still audit.
+          echo "deps_changed=$(grep -qE '^requirements.*\.txt$' <<<"$changed" && echo true || echo false)" >> "$GITHUB_OUTPUT"
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -134,7 +137,8 @@ jobs:
           cache: npm  # pyright and the CDK CLI, keyed on package-lock.json
       - name: Install pyright and the CDK CLI (exact versions; no install scripts)
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Dependency vulnerability audit
+      - name: Dependency vulnerability audit (when requirements change; weekly and on deploy regardless)
+        if: needs.scope.outputs.deps_changed == 'true'
         run: make audit
       - name: Synthesize and run cdk-nag security checks (stand-in app files)
         run: make synth SITE_DIR=tests/fixtures/site
