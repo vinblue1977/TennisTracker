@@ -67,7 +67,7 @@ def test_parses_utc_timezones_all_day_folding_and_escapes() -> None:
         "http://p30-caldav.icloud.com/published/2/x",  # not https
         "https://evil.example.com/published/2/x",
         "https://p30-caldav.icloud.com.evil.com/published/2/x",
-        "https://icloud.com@evil.com/published/2/x",  # user-info trick
+        "https://p30-caldav.icloud.com@example.com/published/2/x",  # user-info trick: the host is example.com
         "https://p30-caldav.icloud.com:8443/published/2/x",
         "https://p30-caldav.icloud.com/private/x",
         "https://169.254.169.254/latest/meta-data/",
