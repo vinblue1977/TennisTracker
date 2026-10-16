@@ -8,6 +8,8 @@ export function initApi(config: Config): void {
   base = config.apiUrl;
 }
 
+export const apiBase = () => base;
+
 async function call<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const token = await getAccessToken();
   if (!token) throw new Error('Signing in…');
@@ -35,6 +37,9 @@ export const api = {
   pushOn: (subscription: PushSubscriptionJSON, timeZone: string) => call<{ devices: number }>('/me/push', { method: 'PUT', body: JSON.stringify({ ...subscription, timeZone }) }),
   pushOff: (endpoint: string) => call<{ devices: number }>('/me/push', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
   pushTest: (endpoint: string) => call<{ sent: number }>('/me/push/test', { method: 'POST', body: JSON.stringify({ endpoint }) }),
+  widgetStatus: () => call<{ enabled: boolean }>('/me/widget'),
+  widgetNew: () => call<{ enabled: boolean; token: string }>('/me/widget', { method: 'POST' }),
+  widgetOff: () => call<{ enabled: boolean }>('/me/widget', { method: 'DELETE' }),
   saveExtras: (id: string, note: string, starred: boolean) =>
     call<{ note: string; starred: boolean }>(`/me/matches/${encodeURIComponent(id)}/extras`, {
       method: 'PUT',

@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 
 import { addPasskeyUrl, currentEmail, logout } from '../auth';
 import { Notifications } from '../components/Notifications';
+import { Widget } from '../components/Widget';
 import { formatTime } from '../data';
 import type { Data } from '../types';
 
@@ -85,6 +86,7 @@ export function Me({ data, onCalendar, onRatings }: { data: Data; onCalendar: (u
       </section>
       <Manual profile={data.profile} onSave={onRatings} />
       <Notifications vapidKey={data.vapidKey ?? ''} />
+      <Widget />
       <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <span class="eyebrow">Tennis calendar</span>
         {calendar?.connected ? (
