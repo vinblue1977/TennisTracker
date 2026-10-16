@@ -92,6 +92,12 @@ export function Me({ data, onCalendar, onRatings, onTrophies }: MeProps) {
           </span>
         </div>
       </section>
+      <section class="list">
+        <a class="item" href="#/stats">
+          <span class="grow">Stats</span>
+          <span class="muted" aria-hidden="true">›</span>
+        </a>
+      </section>
       <Manual profile={data.profile} onSave={onRatings} />
       <Trophies data={data.trophies} onChange={onTrophies} />
       <Notifications vapidKey={data.vapidKey ?? ''} />

@@ -8,6 +8,7 @@ import { Home } from './screens/Home';
 import { MatchDetail } from './screens/MatchDetail';
 import { Matches } from './screens/Matches';
 import { Me } from './screens/Me';
+import { Stats } from './screens/Stats';
 import { WtnHistory } from './screens/WtnHistory';
 import type { Data } from './types';
 
@@ -86,9 +87,14 @@ export function App() {
     const trophies = await api.trophies().catch(() => null); // the save worked; don't report a failed reload as a failed save
     if (trophies) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
   };
+  const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
+  ) : withName ? (
+    <Matches key={withName} data={data} person={safeDecode(withName)} />
+  ) : hash === '#/stats' ? (
+    <Stats data={data} />
   ) : hash === '#/matches' ? (
     <Matches data={data} />
   ) : hash === '#/upsets' ? (
@@ -105,7 +111,7 @@ export function App() {
   return (
     <div class="page">
       {screen}
-      <TabBar active={detailId ? '#/matches' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
+      <TabBar active={detailId || withName ? '#/matches' : hash === '#/stats' ? '#/' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
     </div>
   );
 }

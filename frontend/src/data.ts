@@ -85,3 +85,34 @@ export function relativeDay(startIso: string, now = new Date()): string {
   const diff = Math.round((day(new Date(startIso)) - day(now)) / 86_400_000);
   return diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : '';
 }
+
+export interface Tally {
+  name: string;
+  wins: number;
+  losses: number;
+}
+
+/** Played doubles matches only (no singles, no unfinished). */
+export const playedDoubles = (matches: Match[]) => matches.filter((m) => m.kind === 'DOUBLE' && m.won !== null);
+
+export const winPct = ({ wins, losses }: { wins: number; losses: number }) => (wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0);
+
+/** Record per year, oldest first. */
+export function byYear(matches: Match[]): (Tally & { year: string })[] {
+  const years = [...new Set(matches.map((m) => matchDate(m).slice(0, 4)))].sort();
+  return years.map((year) => ({ year, name: year, ...record(matches.filter((m) => matchDate(m).startsWith(year))) }));
+}
+
+/** Record against or with each person, most matches first. */
+export function tally(matches: Match[], who: (m: Match) => Player[]): Tally[] {
+  const rows = new Map<string, Tally>();
+  for (const m of matches) {
+    for (const { name } of who(m)) {
+      const row = rows.get(name) ?? { name, wins: 0, losses: 0 };
+      if (m.won) row.wins++;
+      else row.losses++;
+      rows.set(name, row);
+    }
+  }
+  return [...rows.values()].sort((a, b) => b.wins + b.losses - (a.wins + a.losses) || b.wins - a.wins || a.name.localeCompare(b.name));
+}

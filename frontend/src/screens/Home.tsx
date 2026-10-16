@@ -66,7 +66,7 @@ export function Home({ data }: { data: Data }) {
       )}
 
       <div class="grid2">
-        <a class="card tap" href="#/matches" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }} aria-label="Wins and losses, see matches">
+        <a class="card tap" href="#/stats" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }} aria-label="Wins and losses, see stats">
           <span class="eyebrow" style={{ alignSelf: 'flex-start' }}>Win–loss</span>
           <Donut wins={wins} losses={losses} />
           <span style={{ fontWeight: 600 }}>

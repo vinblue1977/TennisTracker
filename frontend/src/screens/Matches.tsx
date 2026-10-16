@@ -35,23 +35,23 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data, upcomingTab = false, upsetsOnly = false }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean }) {
+export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '' }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string }) {
   const [query, setQuery] = useState('');
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
   const shown = data.matches.filter(
-    (m) => (!upsetsOnly || m.upsetGap !== null) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
+    (m) => (!upsetsOnly || m.upsetGap !== null) && (!person || (m.kind === 'DOUBLE' && m.won !== null && [...m.partners, ...m.opponents].some((p) => p.name === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
   );
   let year = '';
 
   return (
     <main class="screen">
-      {upsetsOnly && (
-        <a class="back" href="#/">
-          ‹ Home
+      {(upsetsOnly || person) && (
+        <a class="back" href={person ? '#/stats' : '#/'}>
+          {person ? '‹ Stats' : '‹ Home'}
         </a>
       )}
-      <h1 class="title">{upsetsOnly ? 'Upset wins' : 'Matches'}</h1>
+      <h1 class="title">{upsetsOnly ? 'Upset wins' : person ? shortName(person) : 'Matches'}</h1>
       {!upsetsOnly && (
       <nav class="segmented" aria-label="Played or upcoming">
         <a href="#/matches" aria-current={upcomingTab ? undefined : 'page'}>
