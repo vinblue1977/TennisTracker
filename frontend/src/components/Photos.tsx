@@ -22,16 +22,18 @@ export function PhotoStrip({ owner, photos, onPhotos }: { owner: string; photos:
     const picked = files.slice(0, room);
     let done = 0;
     let failed = 0;
+    let reason = '';
     for (const file of picked) {
       setStatus(`Uploading ${done + failed + 1} of ${picked.length}…`);
       try {
         await onPhotos(() => uploadPhoto(owner, file));
         done += 1;
-      } catch {
+      } catch (err) {
         failed += 1; // keep going with the rest
+        reason = err instanceof Error ? err.message : '';
       }
     }
-    const notes = [failed ? `${failed} could not be added.` : '', files.length > room ? `Up to ${MAX_PER_OWNER} photos.` : ''].filter(Boolean);
+    const notes = [failed ? `${failed} could not be added${reason ? ` (${reason})` : ''}.` : '', files.length > room ? `Up to ${MAX_PER_OWNER} photos.` : ''].filter(Boolean);
     setStatus(done || notes.length ? [done ? `Added ${done}.` : '', ...notes].filter(Boolean).join(' ') : '');
     setBusy(false);
   };
