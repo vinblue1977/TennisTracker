@@ -40,7 +40,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
   const shown = data.matches.filter(
-    (m) => (!upsetsOnly || m.upsetGap !== null) && (!person || (m.kind === 'DOUBLE' && m.won !== null && [...m.partners, ...m.opponents].some((p) => p.name === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
+    (m) => (!upsetsOnly || m.upsetGap !== null) && (!person || (m.kind === 'DOUBLE' && m.won !== null && [...m.partners, ...m.opponents].some((p) => shortName(p.name) === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
   );
   let year = '';
 
@@ -51,7 +51,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
           {person ? '‹ Stats' : '‹ Home'}
         </a>
       )}
-      <h1 class="title">{upsetsOnly ? 'Upset wins' : person ? shortName(person) : 'Matches'}</h1>
+      <h1 class="title">{upsetsOnly ? 'Upset wins' : person || 'Matches'}</h1>
       {!upsetsOnly && (
       <nav class="segmented" aria-label="Played or upcoming">
         <a href="#/matches" aria-current={upcomingTab ? undefined : 'page'}>
