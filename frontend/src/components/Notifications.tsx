@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 
 import { api } from '../api';
+import { Collapsible } from './Collapsible';
 
 // iPhones support Web Push only in the Home Screen app (iOS 16.4+). Pattern from the Stocks app.
 const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -93,8 +94,7 @@ export function Notifications({ vapidKey }: { vapidKey: string }) {
     );
   }
   return (
-    <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <span class="eyebrow">Notifications</span>
+    <Collapsible title="Notifications" summary={on ? 'On for this iPhone' : on === null && supported() ? 'Checking…' : 'Off'}>
       <span class="muted" style={{ fontSize: '14px' }}>
         Match reminders (8:00pm the evening before, 2 hours before) and WTN changes.
       </span>
@@ -102,6 +102,6 @@ export function Notifications({ vapidKey }: { vapidKey: string }) {
       <span class="muted" role="status">
         {message}
       </span>
-    </section>
+    </Collapsible>
   );
 }

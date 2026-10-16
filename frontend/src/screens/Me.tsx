@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 
 import { addPasskeyUrl, currentEmail, logout } from '../auth';
+import { Collapsible } from '../components/Collapsible';
 import { Trophies } from '../components/Trophies';
 import { Notifications } from '../components/Notifications';
 import { Widget } from '../components/Widget';
@@ -13,6 +14,8 @@ function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Rat
   const [utr, setUtr] = useState(typeof profile.utr === 'number' ? String(profile.utr) : '');
   const [ntrp, setNtrp] = useState(typeof profile.ntrp === 'number' ? String(profile.ntrp) : '');
   const [status, setStatus] = useState('');
+  const [open, setOpen] = useState(false);
+  const summary = [typeof profile.utr === 'number' ? `UTR ${profile.utr}` : null, typeof profile.ntrp === 'number' ? `NTRP ${profile.ntrp}` : null].filter(Boolean).join(' · ') || 'Tap to add';
   const submit = async () => {
     const num = (text: string) => (text.trim() === '' ? null : /^\d+([.,]\d+)?$/.test(text.trim()) ? Number(text.trim().replace(',', '.')) : NaN);
     const u = num(utr);
@@ -24,14 +27,14 @@ function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Rat
     setStatus('Saving…');
     try {
       await onSave({ utr: u, ntrp: n });
-      setStatus('Saved');
+      setStatus('');
+      setOpen(false);
     } catch {
       setStatus('Could not save. Try again.');
     }
   };
   return (
-    <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <span class="eyebrow">Other ratings (by hand)</span>
+    <Collapsible title="Other ratings (by hand)" summary={summary} open={open} onToggle={setOpen}>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <span class="muted">Doubles UTR</span>
         <input type="text" inputMode="decimal" autoComplete="off" placeholder="e.g. 7.25" value={utr} onInput={(e) => setUtr(e.currentTarget.value)} />
@@ -46,7 +49,7 @@ function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Rat
       <span class="muted" role="status">
         {status}
       </span>
-    </section>
+    </Collapsible>
   );
 }
 
@@ -103,8 +106,7 @@ export function Me({ data, onCalendar, onRatings, onTrophies, onPhotos }: MeProp
       <Trophies data={data.trophies} photos={data.photos} onChange={onTrophies} onPhotos={onPhotos} />
       <Notifications vapidKey={data.vapidKey ?? ''} />
       <Widget />
-      <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <span class="eyebrow">Tennis calendar</span>
+      <Collapsible title="Tennis calendar" summary={calendar?.connected ? `Connected · ${calendar.upcoming ?? 0} upcoming` : 'Not connected'}>
         {calendar?.connected ? (
           <>
             <span>
@@ -128,7 +130,7 @@ export function Me({ data, onCalendar, onRatings, onTrophies, onPhotos }: MeProp
         <span class="muted" role="status">
           {status}
         </span>
-      </section>
+      </Collapsible>
       <section class="list">
         <div class="item">
           <span class="grow">Signed in</span>

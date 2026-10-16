@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 
 import { api, apiBase } from '../api';
+import { Collapsible } from './Collapsible';
 
 // Home Screen widget via the Scriptable app. The setup line (addresses and a private token) is shown once.
 export function Widget() {
@@ -38,8 +39,7 @@ export function Widget() {
   });
 
   return (
-    <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <span class="eyebrow">Home Screen widget</span>
+    <Collapsible title="Home Screen widget" summary={on === null ? 'Checking…' : on ? 'On' : 'Off'}>
       <span class="muted" style={{ fontSize: '14px' }}>
         WTN and your next match, with the free Scriptable app. Making a new line stops the old one working.
       </span>
@@ -64,6 +64,6 @@ export function Widget() {
       <span class="muted" role="status">
         {message}
       </span>
-    </section>
+    </Collapsible>
   );
 }
