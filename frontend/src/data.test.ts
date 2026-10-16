@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatTime, latest, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
+import { byYear, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -78,5 +78,26 @@ describe('formatTime', () => {
     expect(formatTime(new Date(2026, 9, 16, 21, 0))).toBe('9:00pm');
     expect(formatTime(new Date(2026, 9, 16, 0, 5))).toBe('12:05am');
     expect(formatTime(new Date(2026, 9, 16, 12, 30))).toBe('12:30pm');
+  });
+});
+
+describe('stats', () => {
+  const p = (name: string) => ({ name, wtn: null });
+  const m = (date: string, won: boolean | null, partner: string, opp: string, kind: Match['kind'] = 'DOUBLE'): Match => ({ ...match(date, won), kind, partners: [p(partner)], opponents: [p(opp)] });
+  const all = [m('2024-05-01', true, 'Ann', 'Bo'), m('2024-06-01', false, 'Ann', 'Bo'), m('2025-01-01', true, 'Cy', 'Bo'), m('2025-02-01', true, 'Ann', 'Di', 'SINGLE'), m('2025-03-01', null, 'Ann', 'Bo')];
+
+  it('keeps only played doubles', () => {
+    expect(playedDoubles(all)).toHaveLength(3);
+  });
+  it('counts per year, oldest first', () => {
+    expect(byYear(playedDoubles(all)).map((y) => [y.year, y.wins, y.losses])).toEqual([['2024', 1, 1], ['2025', 1, 0]]);
+  });
+  it('tallies people, most matches first', () => {
+    expect(tally(playedDoubles(all), (x) => x.partners)).toEqual([{ name: 'Ann', wins: 1, losses: 1 }, { name: 'Cy', wins: 1, losses: 0 }]);
+    expect(tally(playedDoubles(all), (x) => x.opponents)).toEqual([{ name: 'Bo', wins: 2, losses: 1 }]);
+  });
+  it('rounds win %', () => {
+    expect(winPct({ wins: 2, losses: 1 })).toBe(67);
+    expect(winPct({ wins: 0, losses: 0 })).toBe(0);
   });
 });

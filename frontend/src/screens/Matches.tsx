@@ -35,8 +35,8 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data, upcomingTab = false, upsetsOnly = false }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean }) {
-  const [query, setQuery] = useState('');
+export function Matches({ data, upcomingTab = false, upsetsOnly = false, filter = '' }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; filter?: string }) {
+  const [query, setQuery] = useState(filter);
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
   const shown = data.matches.filter(
@@ -46,9 +46,9 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false }: { dat
 
   return (
     <main class="screen">
-      {upsetsOnly && (
-        <a class="back" href="#/">
-          ‹ Home
+      {(upsetsOnly || filter) && (
+        <a class="back" href={filter ? '#/stats' : '#/'}>
+          {filter ? '‹ Stats' : '‹ Home'}
         </a>
       )}
       <h1 class="title">{upsetsOnly ? 'Upset wins' : 'Matches'}</h1>

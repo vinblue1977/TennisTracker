@@ -108,3 +108,11 @@ input[type='url'], input[type='text'], input[type='date'], select { width: 100%;
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 a.tap { display: block; color: inherit; text-decoration: none; }
 a.card.tap { display: flex; }
+
+.stat-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; min-height: 52px; text-decoration: none; color: inherit; border-top: 1px solid var(--line); }
+.bar { display: block; height: 6px; border-radius: 3px; background: var(--raised); margin-top: 6px; }
+.bar i { display: block; height: 100%; border-radius: 3px; background: var(--win); }
+.year-chart { display: flex; align-items: flex-end; gap: 10px; margin-top: 10px; min-height: 140px; }
+.year-chart div { flex: 1; text-align: center; font-size: 12px; color: var(--muted); }
+.year-chart i { display: block; background: var(--win); border-radius: 5px 5px 0 0; margin-bottom: 4px; }
+.link-button { width: 100%; min-height: 44px; background: none; border: 0; color: var(--accent); font-weight: 600; }
