@@ -1,5 +1,8 @@
 """Sign-in (Cognito passkeys), the `/me` HTTP API, and the app's hosting (private S3 behind CloudFront)."""
 
+import json
+from pathlib import Path
+
 from aws_cdk import Aws, CfnOutput, Duration, RemovalPolicy, Stack
 from aws_cdk import aws_apigatewayv2 as apigw
 from aws_cdk import aws_apigatewayv2_authorizers as authorizers
@@ -141,7 +144,8 @@ class Web(Construct):
             "LoginBranding",
             user_pool_id=pool.user_pool_id,
             client_id=client.user_pool_client_id,
-            use_cognito_provided_values=True,
+            use_cognito_provided_values=False,
+            settings=json.loads((Path(__file__).parent / "login" / "branding.json").read_text()),  # dark, app colours
         )
         domain = pool.add_domain(
             "LoginDomain",
