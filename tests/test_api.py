@@ -111,3 +111,11 @@ def test_hand_entered_ratings_are_validated_saved_and_cleared(table) -> None:
     profile = call("GET /me/profile")[1]
     assert profile["utr"] == 7.25 and profile["ntrp"] == 3.5 and profile["tennisId"] == "TES•••D-ME"
     assert call("PUT /me/ratings", body='{"utr": null}')[1] == {"utr": None, "ntrp": 3.5}
+
+
+def test_ratings_accept_boundaries_and_reject_off_step_values(table) -> None:
+    assert call("PUT /me/ratings", body='{"utr": 1, "ntrp": 7.0}')[0] == 200
+    assert call("PUT /me/ratings", body='{"utr": 16.5, "ntrp": 1.0}')[0] == 200
+    assert call("PUT /me/ratings", body='{"utr": null, "ntrp": null}')[1] == {"utr": None, "ntrp": None}
+    for bad in ('{"utr": 7.255}', '{"utr": NaN}', '{"ntrp": Infinity}', '{"utr": 0.99}'):
+        assert call("PUT /me/ratings", body=bad)[0] == 400, bad

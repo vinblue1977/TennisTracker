@@ -12,10 +12,11 @@ function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Rat
   const [ntrp, setNtrp] = useState(typeof profile.ntrp === 'number' ? String(profile.ntrp) : '');
   const [status, setStatus] = useState('');
   const submit = async () => {
-    const u = utr.trim() === '' ? null : Number(utr);
-    const n = ntrp.trim() === '' ? null : Number(ntrp);
-    if ((u !== null && !(u >= 1 && u <= 16.5)) || (n !== null && !(n >= 1 && n <= 7 && n * 2 === Math.round(n * 2)))) {
-      setStatus('UTR is 1 to 16.5. NTRP is 1.0 to 7.0 in halves (e.g. 3.5).');
+    const num = (text: string) => (text.trim() === '' ? null : /^\d+([.,]\d+)?$/.test(text.trim()) ? Number(text.trim().replace(',', '.')) : NaN);
+    const u = num(utr);
+    const n = num(ntrp);
+    if ((u !== null && !(u >= 1 && u <= 16.5 && Math.abs(u * 100 - Math.round(u * 100)) < 1e-6)) || (n !== null && !(n >= 1 && n <= 7 && n * 2 === Math.round(n * 2)))) {
+      setStatus('UTR is 1 to 16.5 with up to 2 decimals. NTRP is 1.0 to 7.0 in halves (e.g. 3.5).');
       return;
     }
     setStatus('Saving…');
