@@ -1,5 +1,22 @@
 import { useState } from 'preact/hooks';
 
+const draftKey = (id: string) => `note-draft:${id}`;
+const readDraft = (id: string) => {
+  try {
+    return localStorage.getItem(draftKey(id));
+  } catch {
+    return null;
+  }
+};
+const writeDraft = (id: string, text: string | null) => {
+  try {
+    if (text === null) localStorage.removeItem(draftKey(id));
+    else localStorage.setItem(draftKey(id), text);
+  } catch {
+    // storage unavailable: the Save button still works
+  }
+};
+
 import { formatDate, matchDate, ratingHistory, shortName, teamAverage, wtnAfter } from '../data';
 import { forOwner } from '../photos';
 import type { Data, Match } from '../types';
@@ -14,7 +31,7 @@ interface Props {
 
 export function MatchDetail({ data, id, onSave, onPhotos }: Props) {
   const m = data.matches.find((x) => x.id === id);
-  const [note, setNote] = useState(m?.note ?? '');
+  const [note, setNote] = useState(readDraft(id) ?? m?.note ?? ''); // an unsaved draft survives an app reload
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   if (!m) {
     return (
@@ -30,6 +47,7 @@ export function MatchDetail({ data, id, onSave, onPhotos }: Props) {
     setStatus('saving');
     try {
       await onSave(m.id, nextNote, starred);
+      writeDraft(m.id, null);
       setStatus('saved');
     } catch {
       setStatus('error');
@@ -89,7 +107,12 @@ export function MatchDetail({ data, id, onSave, onPhotos }: Props) {
         <label class="eyebrow" for="note">
           Note
         </label>
-        <textarea id="note" rows={4} maxLength={2000} placeholder="How did it go? What worked, what to fix?" value={note} onInput={(e) => setNote(e.currentTarget.value)} />
+        <textarea id="note" rows={4} maxLength={2000} placeholder="How did it go? What worked, what to fix?" value={note} onInput={(e) => {
+            setNote(e.currentTarget.value);
+            writeDraft(m.id, e.currentTarget.value);
+          }}
+          onBlur={() => note !== m.note && status !== 'saving' && save(note, m.starred)}
+        />
         <div class="row" style={{ justifyContent: 'space-between' }}>
           <span class="muted" role="status">
             {{ idle: '', saving: 'Saving…', saved: 'Saved', error: 'Could not save. Try again.' }[status]}
