@@ -53,6 +53,7 @@ button { font: inherit; color: inherit; }
 
 .hero { background: var(--hero); border: 1px solid var(--hero-line); border-radius: 22px; padding: 18px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
 .hero .eyebrow, .hero .muted { color: var(--hero-muted); }
+a.hero { color: inherit; text-decoration: none; }
 .hero-value { font: 700 64px/1 var(--display); }
 
 .badge { width: 32px; height: 32px; flex: none; border-radius: 9px; color: var(--ground); font-weight: 700; display: flex; align-items: center; justify-content: center; }
