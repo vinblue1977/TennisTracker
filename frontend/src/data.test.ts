@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { latest, ratingHistory, record, shortName, teamAverage, wtnAfter } from './data';
+import { latest, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -61,5 +61,14 @@ describe('teamAverage and shortName', () => {
     expect(shortName('Pat Partner')).toBe('Pat P.');
     expect(shortName('Juan Pablo Example')).toBe('Juan Pablo E.');
     expect(shortName('Solo')).toBe('Solo');
+  });
+});
+
+describe('relativeDay', () => {
+  it('says Today and Tomorrow in local time, else nothing', () => {
+    const now = new Date(2026, 9, 16, 10, 0);
+    expect(relativeDay(new Date(2026, 9, 16, 21, 0).toISOString(), now)).toBe('Today');
+    expect(relativeDay(new Date(2026, 9, 17, 9, 0).toISOString(), now)).toBe('Tomorrow');
+    expect(relativeDay(new Date(2026, 9, 20, 9, 0).toISOString(), now)).toBe('');
   });
 });

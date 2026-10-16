@@ -97,5 +97,11 @@ textarea { resize: none; }
 .tab { min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; }
 .tab[aria-current='page'] { color: var(--accent); }
 
+.date-chip { width: 52px; height: 56px; flex: none; border-radius: 12px; background: var(--raised); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--accent); }
+.date-chip .num { font-size: 24px; color: var(--text); line-height: 1; }
+.segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--card); border-radius: 12px; padding: 3px; }
+.segmented a { min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 600; }
+.segmented a[aria-current='page'] { background: var(--raised); color: var(--text); }
+input[type='url'] { width: 100%; border: 1px solid var(--field); border-radius: 12px; background: var(--raised); color: var(--text); font: 16px Barlow, system-ui, sans-serif; padding: 11px 12px; }
 .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 24px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

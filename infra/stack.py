@@ -37,46 +37,52 @@ class TennisTrackerStack(Stack):
         )
         CfnOutput(self, "TableName", value=self.table.table_name)
 
-        self._wtn_sync()
-        Web(self, "Web", table=self.table, site_dir=self.node.try_get_context("siteDir") or "frontend/dist")
+        topic = self._alert_topic()
+        # 11:00 UTC = 06:00 Chicago in summer (05:00 in winter).
+        self._scheduled("WtnSync", "wtn_sync.handler.handler", events.Schedule.cron(minute="0", hour="11"), topic, "WTN sync")
+        calendar = self._scheduled(
+            "CalendarSync", "calendar_sync.handler.handler", events.Schedule.rate(Duration.hours(1)), topic, "Calendar sync"
+        )
+        site_dir = self.node.try_get_context("siteDir") or "frontend/dist"
+        Web(self, "Web", table=self.table, site_dir=site_dir, calendar_fn=calendar)  # pyright: ignore[reportArgumentType]
 
         github_repo: str = self.node.try_get_context("githubRepo") or ""
         if github_repo:
             self._github_deploy_role(github_repo)
 
-    def _wtn_sync(self) -> None:
-        """Daily WTN sync Lambda, with an email when it fails 3 days running or crashes."""
+    def _alert_topic(self) -> sns.Topic:
         topic = sns.Topic(self, "AlertTopic", enforce_ssl=True)
         alert_email: str = self.node.try_get_context("alertEmail") or ""
         if alert_email:
             topic.add_subscription(subs.EmailSubscription(alert_email))  # pyright: ignore[reportArgumentType]
-
-        fn = lambda_.Function(
-            self,
-            "WtnSync",
-            runtime=lambda_.Runtime.PYTHON_3_14,
-            architecture=lambda_.Architecture.ARM_64,
-            handler="wtn_sync.handler.handler",
-            code=lambda_.Code.from_asset("backend", exclude=["**/__pycache__"]),
-            memory_size=256,
-            timeout=Duration.seconds(60),
-            environment={"TABLE_NAME": self.table.table_name, "ALERT_TOPIC_ARN": topic.topic_arn},
-            log_group=logs.LogGroup(self, "WtnSyncLogs", retention=logs.RetentionDays.TWO_WEEKS),
-        )
-        self.table.grant_read_write_data(fn)
-        topic.grant_publish(fn)
-        # 11:00 UTC = 06:00 Chicago in summer (05:00 in winter).
-        target = targets.LambdaFunction(fn)  # pyright: ignore[reportArgumentType]
-        events.Rule(self, "WtnSyncDaily", schedule=events.Schedule.cron(minute="0", hour="11"), targets=[target])  # pyright: ignore[reportArgumentType]
-        fn.metric_errors(period=Duration.days(1)).create_alarm(
-            self, "WtnSyncErrors", threshold=1, evaluation_periods=1, alarm_description="WTN sync Lambda crashed"
-        ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
-        CfnOutput(self, "WtnSyncFunction", value=fn.function_name)
-
         NagSuppressions.add_resource_suppressions(
             topic,
             [NagPackSuppression(id="AwsSolutions-SNS2", reason="Alerts hold no secrets; a customer-managed key costs $1/month")],
         )
+        return topic
+
+    def _scheduled(self, name: str, handler: str, schedule: events.Schedule, topic: sns.Topic, what: str) -> lambda_.Function:
+        """A Lambda on a schedule, with table access, 14-day logs and an email if it crashes."""
+        fn = lambda_.Function(
+            self,
+            name,
+            runtime=lambda_.Runtime.PYTHON_3_14,
+            architecture=lambda_.Architecture.ARM_64,
+            handler=handler,
+            code=lambda_.Code.from_asset("backend", exclude=["**/__pycache__"]),
+            memory_size=256,
+            timeout=Duration.seconds(60),
+            environment={"TABLE_NAME": self.table.table_name, "ALERT_TOPIC_ARN": topic.topic_arn},
+            log_group=logs.LogGroup(self, f"{name}Logs", retention=logs.RetentionDays.TWO_WEEKS),
+        )
+        self.table.grant_read_write_data(fn)
+        topic.grant_publish(fn)
+        target = targets.LambdaFunction(fn)  # pyright: ignore[reportArgumentType]
+        events.Rule(self, f"{name}Schedule", schedule=schedule, targets=[target])  # pyright: ignore[reportArgumentType]
+        fn.metric_errors(period=Duration.days(1)).create_alarm(
+            self, f"{name}Errors", threshold=1, evaluation_periods=1, alarm_description=f"{what} Lambda crashed"
+        ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
+        CfnOutput(self, f"{name}Function", value=fn.function_name)
         NagSuppressions.add_resource_suppressions(
             fn,
             [
@@ -93,6 +99,7 @@ class TennisTrackerStack(Stack):
             ],
             apply_to_children=True,
         )
+        return fn
 
     def _github_deploy_role(self, github_repo: str) -> None:
         """Role for GitHub Actions in this repo's production environment. Reuses the account's OIDC provider."""

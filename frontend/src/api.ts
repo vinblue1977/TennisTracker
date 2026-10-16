@@ -1,6 +1,6 @@
 import { getAccessToken } from './auth';
 import type { Config } from './config';
-import type { Match, Profile, Rating } from './types';
+import type { Match, Profile, Rating, Upcoming } from './types';
 
 let base = '';
 
@@ -27,6 +27,8 @@ export const api = {
   profile: () => call<Profile>('/me/profile'),
   ratings: () => call<{ ratings: Rating[] }>('/me/ratings').then((r) => r.ratings),
   matches: () => call<{ matches: Match[] }>('/me/matches').then((r) => r.matches),
+  upcoming: () => call<{ upcoming: Upcoming[] }>('/me/upcoming').then((r) => r.upcoming),
+  saveCalendar: (url: string) => call<{ connected: boolean }>('/me/calendar', { method: 'PUT', body: JSON.stringify({ url }) }),
   saveExtras: (id: string, note: string, starred: boolean) =>
     call<{ note: string; starred: boolean }>(`/me/matches/${encodeURIComponent(id)}/extras`, {
       method: 'PUT',

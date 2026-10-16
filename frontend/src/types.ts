@@ -25,8 +25,18 @@ export interface Rating {
   confidence: number | null;
 }
 
+export interface Upcoming {
+  SK: string; // UPCOMING#<start>#<uid>
+  title: string;
+  location: string;
+  start: string; // ISO, UTC
+  end: string;
+  allDay: boolean;
+}
+
 export interface Profile {
   tennisId: string | null;
+  calendar?: { connected: boolean; status?: string; lastRunAt?: string; upcoming?: number };
   sync: { status?: string; lastRunAt?: string; latestDate?: string; latestValue?: number; matchCount?: number };
 }
 
@@ -34,4 +44,5 @@ export interface Data {
   profile: Profile;
   ratings: Rating[];
   matches: Match[];
+  upcoming: Upcoming[];
 }

@@ -1,4 +1,5 @@
 import { Donut, Trend } from '../components/Charts';
+import { UpcomingCard } from '../components/Upcoming';
 import { formatDate, latest, matchDate, ratingHistory, record, shortName } from '../data';
 import type { Data } from '../types';
 import { MatchRow } from './Matches';
@@ -44,6 +45,8 @@ export function Home({ data }: { data: Data }) {
           <span class="muted">No WTN yet. It appears after the first sync.</span>
         )}
       </section>
+
+      {data.upcoming[0] && <UpcomingCard u={data.upcoming[0]} highlight />}
 
       <div class="grid2">
         <section class="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }} aria-label="Wins and losses">

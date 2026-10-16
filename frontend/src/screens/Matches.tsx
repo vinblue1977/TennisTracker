@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 
 import { formatDate, matchDate, ratingHistory, shortName, wtnAfter } from '../data';
+import { UpcomingCard } from '../components/Upcoming';
 import type { Data, Match } from '../types';
 
 const result = (m: Match) => (m.won === true ? 'W' : m.won === false ? 'L' : 'N');
@@ -34,7 +35,7 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data }: { data: Data }) {
+export function Matches({ data, upcomingTab = false }: { data: Data; upcomingTab?: boolean }) {
   const [query, setQuery] = useState('');
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
@@ -46,6 +47,23 @@ export function Matches({ data }: { data: Data }) {
   return (
     <main class="screen">
       <h1 class="title">Matches</h1>
+      <nav class="segmented" aria-label="Played or upcoming">
+        <a href="#/matches" aria-current={upcomingTab ? undefined : 'page'}>
+          Played · {data.matches.length}
+        </a>
+        <a href="#/upcoming" aria-current={upcomingTab ? 'page' : undefined}>
+          Upcoming · {data.upcoming.length}
+        </a>
+      </nav>
+      {upcomingTab ? (
+        <>
+          {data.upcoming.length === 0 && <p class="muted">Nothing coming up. Add matches to your Tennis calendar, and connect it under Me.</p>}
+          {data.upcoming.map((u) => (
+            <UpcomingCard u={u} />
+          ))}
+        </>
+      ) : (
+        <>
       <label>
         <span class="sr-only">Search</span>
         <input type="search" placeholder="Search partner, opponent, event" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
@@ -79,6 +97,8 @@ export function Matches({ data }: { data: Data }) {
           </>
         );
       })}
+        </>
+      )}
     </main>
   );
 }
