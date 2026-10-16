@@ -140,3 +140,15 @@ def test_api_routes_require_sign_in_and_site_is_private() -> None:
         "AWS::CloudFront::Distribution",
         Match.object_like({"DistributionConfig": Match.object_like({"DefaultRootObject": "index.html"})}),
     )
+
+
+def test_sign_in_page_is_dark() -> None:
+    _template().has_resource_properties(
+        "AWS::Cognito::ManagedLoginBranding",
+        {
+            "UseCognitoProvidedValues": False,
+            "Settings": Match.object_like(
+                {"categories": Match.object_like({"global": Match.object_like({"colorSchemeMode": "DARK"})})}
+            ),
+        },
+    )
