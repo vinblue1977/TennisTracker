@@ -19,7 +19,7 @@
    }
   },
   "form": {
-   "displayGraphics": true,
+   "displayGraphics": false,
    "instructions": {
     "enabled": false
    },

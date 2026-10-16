@@ -74,7 +74,7 @@ export function Home({ data }: { data: Data }) {
           <span class="num" style={{ fontSize: '40px', color: 'var(--accent)' }}>{upsets.length}</span>
           <span class="muted" style={{ fontSize: '14px' }}>
             {biggest
-              ? `Beat a higher-rated team. Biggest: ${biggest.upsetGap?.toFixed(2)} w/ ${shortName(biggest.partners[0]?.name ?? '')}, ${formatDate(matchDate(biggest), true)}`
+              ? `Beat a higher-rated team. Biggest: ${biggest.upsetGap ? `${biggest.upsetGap.toFixed(2)} w/ ` : 'w/ '}${shortName(biggest.partners[0]?.name ?? '')}, ${formatDate(matchDate(biggest), true)}`
               : 'Beat a higher-rated team to get one.'}
           </span>
         </section>

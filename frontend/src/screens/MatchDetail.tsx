@@ -54,7 +54,7 @@ export function MatchDetail({ data, id, onSave }: Props) {
           <span class="pill" style={{ background: m.won ? 'var(--win)' : m.won === false ? 'var(--loss)' : 'var(--field)', color: m.won === null ? 'var(--text)' : 'var(--ground)' }}>
             {m.won ? 'Win' : m.won === false ? 'Loss' : 'No result'}
           </span>
-          {m.upsetGap !== null && <span class="pill">Upset · {m.upsetGap.toFixed(2)}</span>}
+          {m.upsetGap !== null && <span class="pill">{m.upsetGap > 0 ? `Upset · ${m.upsetGap.toFixed(2)}` : 'Upset win'}</span>}
         </div>
         <h1 style={{ margin: 0, fontSize: '22px', lineHeight: 1.2 }}>{m.event}</h1>
         <span class="muted">
