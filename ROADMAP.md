@@ -47,7 +47,6 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [ ] Tennis news (RSS or a free pro-tennis API plan)
 - [ ] Tennis Warehouse deal watchlist (check their terms first)
 - [ ] Match insights with a small Claude model
-- [ ] Friends, shared results, mini league
 - [ ] USTA Connect sync if approved
 
 ## Watch
