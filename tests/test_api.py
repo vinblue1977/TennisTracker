@@ -1,6 +1,7 @@
 """`/me` API on fake DynamoDB (moto) with made-up data."""
 
 import json
+from decimal import Decimal
 
 import boto3
 import pytest
@@ -119,3 +120,31 @@ def test_ratings_accept_boundaries_and_reject_off_step_values(table) -> None:
     assert call("PUT /me/ratings", body='{"utr": null, "ntrp": null}')[1] == {"utr": None, "ntrp": None}
     for bad in ('{"utr": 7.255}', '{"utr": NaN}', '{"ntrp": Infinity}', '{"utr": 0.99}'):
         assert call("PUT /me/ratings", body=bad)[0] == 400, bad
+
+
+def widget(token: str | None) -> tuple[int, dict]:
+    response = api.handler({"routeKey": "GET /widget", "headers": {"x-widget-token": token} if token else {}}, None)
+    return response["statusCode"], json.loads(response["body"])
+
+
+def test_widget_token_gives_wtn_and_next_match_and_can_be_replaced_or_revoked(table) -> None:
+    assert call("GET /me/widget")[1] == {"enabled": False}
+    table.put_item(Item={"PK": "USER#owner", "SK": "RATING#WTN#DOUBLE#2026-10-01", "value": Decimal("25.5"), "confidence": 80})
+    table.put_item(Item={"PK": "USER#owner", "SK": "RATING#WTN#DOUBLE#2026-10-05", "value": Decimal("25.25"), "confidence": 82})
+    table.put_item(
+        Item={"PK": "USER#owner", "SK": "UPCOMING#2000-01-01T09:00Z#old", "title": "Past", "start": "2000-01-01T09:00:00+00:00"}
+    )
+    soon = {"title": "League", "location": "Court 1", "allDay": False, "start": "2999-01-02T09:00:00+00:00"}
+    table.put_item(Item={"PK": "USER#owner", "SK": "UPCOMING#2999-01-02T09:00Z#a", **soon})
+    token = call("POST /me/widget")[1]["token"]
+    status, body = widget(token)
+    assert status == 200 and body["next"] == soon
+    assert body["wtn"]["value"] == 25.25 and body["wtn"]["better"] == 0.25 and body["wtn"]["trend"] == [25.5, 25.25]
+    assert "tennisId" not in json.dumps(body)
+    new = call("POST /me/widget")[1]["token"]
+    assert widget(token)[0] == 401 and widget(new)[0] == 200  # the old token stops working
+    assert call("DELETE /me/widget")[1] == {"enabled": False} and widget(new)[0] == 401
+
+
+def test_widget_rejects_missing_or_wrong_token(table) -> None:
+    assert widget(None)[0] == 401 and widget("nope")[0] == 401
