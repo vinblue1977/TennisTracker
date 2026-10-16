@@ -3,6 +3,7 @@
 ## Pull requests
 
 - Before starting new work, run `gh pr list`. If a PR is open, get it merged first (fix conflicts or failing checks, `gh pr update-branch <n>`, wait for the merge), then `git pull` main.
+- Don't open a second PR while one is open, unless it's docs-only. If two are open, run `gh pr update-branch` on the other as soon as one merges, without waiting to be told.
 - `git pull` main before branching. Use a conventional title (`feat:`, `fix:`, `ci:`, `docs:`).
 - Run `make check` before pushing.
 - After `gh pr create`, run `gh pr merge --auto --squash` yourself. There is no bot auto-merge: merges made with
