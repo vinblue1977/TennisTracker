@@ -125,7 +125,7 @@ export function App() {
   const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
-    <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
+    <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} />
   ) : withName ? (
     <Matches key={withName} data={data} person={safeDecode(withName)} />
   ) : hash === '#/stats' ? (
