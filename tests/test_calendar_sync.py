@@ -168,3 +168,15 @@ def test_failures_are_recorded(table, monkeypatch: pytest.MonkeyPatch) -> None:
     profile = table.get_item(Key={"PK": "USER#owner", "SK": "PROFILE"})["Item"]
     assert h.sync_user(table, profile, NOW)["failures"] == 1
     assert table.get_item(Key={"PK": "USER#owner", "SK": "SYNC#CAL"})["Item"]["status"] == "error"
+
+
+def test_disconnect_during_sync_is_not_undone(table, monkeypatch: pytest.MonkeyPatch) -> None:
+    profile = table.get_item(Key={"PK": "USER#owner", "SK": "PROFILE"})["Item"]
+
+    def fetch_while_user_disconnects(url):
+        table.update_item(Key={"PK": "USER#owner", "SK": "PROFILE"}, UpdateExpression="REMOVE calendarUrl")
+        return ICS
+
+    monkeypatch.setattr(h, "fetch", fetch_while_user_disconnects)
+    assert h.sync_user(table, profile, NOW)["status"] == "skipped"
+    assert _upcoming(table) == []

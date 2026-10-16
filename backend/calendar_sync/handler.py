@@ -47,6 +47,11 @@ def sync_user(table: Any, profile: dict[str, Any], now: datetime | None = None) 
             _alert(f"Tennis Tracker: calendar sync failed for a day.\n\nLast error: {error}")
         return {"user": pk, "status": "error", "failures": failures}
 
+    # The link may have been removed or changed while this sync was fetching: then leave the data alone.
+    current = table.get_item(Key={"PK": pk, "SK": "PROFILE"}).get("Item", {})
+    if current.get("calendarUrl") != profile["calendarUrl"]:
+        return {"user": pk, "status": "skipped"}
+
     wanted = {_sk(e): _item(pk, e) for e in events if e.end >= now and e.start <= now + AHEAD}
     existing = {i["SK"] for i in _query(table, pk, "UPCOMING#")}
     with table.batch_writer() as batch:
