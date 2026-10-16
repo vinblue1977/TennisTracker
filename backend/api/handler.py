@@ -166,9 +166,9 @@ def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | Non
 
 @cache
 def _s3() -> Any:
-    region = boto3.Session().region_name
+    # Virtual-hosted URLs (<bucket>.s3.<region>...) are the only S3 host the app's CSP allows.
     return boto3.client(
-        "s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4")
+        "s3", region_name=boto3.Session().region_name, config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"})
     )
 
 
