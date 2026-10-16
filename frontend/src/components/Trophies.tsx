@@ -156,7 +156,7 @@ function TrophyRow({ trophy: t, photos, onOpen, onPhotos }: { trophy: Trophy; ph
   );
   if (!cover)
     return (
-      <button class="row" type="button" style={{ background: 'none', border: 0, padding: 0, textAlign: 'left' }} onClick={onOpen}>
+      <button class="row photo-card" type="button" style={{ flexDirection: 'row' }} onClick={onOpen}>
         <span style={{ fontSize: '30px' }}>{icon(t)}</span>
         <span class="grow">{text}</span>
       </button>
