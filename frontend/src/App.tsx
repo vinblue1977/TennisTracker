@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { api, initApi } from './api';
 import { initAuth } from './auth';
@@ -37,8 +37,15 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
-  const [profile, ratings, matches, upcoming, trophies] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming(), api.trophies().catch(() => ({ trophies: [], suggestions: [] }))]);
-  return { profile, ratings, matches, upcoming, trophies, vapidKey: config.vapidPublicKey ?? '' };
+  const [profile, ratings, matches, upcoming, trophies, photos] = await Promise.all([
+    api.profile(),
+    api.ratings(),
+    api.matches(),
+    api.upcoming(),
+    api.trophies().catch(() => ({ trophies: [], suggestions: [] })),
+    api.photos().catch(() => []),
+  ]);
+  return { profile, ratings, matches, upcoming, trophies, photos, vapidKey: config.vapidPublicKey ?? '' };
 }
 
 export function App() {
@@ -50,6 +57,20 @@ export function App() {
       .then((data) => data && setState({ kind: 'ready', data }))
       .catch((e: Error) => setState({ kind: 'error', message: e.message }));
   }, []);
+
+  // Photo links last 15 minutes, so fetch fresh ones when you come back to the app (at most once a minute).
+  const photosAt = useRef(Date.now());
+  const ready = state.kind === 'ready';
+  useEffect(() => {
+    if (!ready || isMock()) return;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - photosAt.current < 60_000) return;
+      photosAt.current = Date.now();
+      api.photos().then((photos) => setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, photos } } : prev))).catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, [ready]);
 
   if (state.kind === 'loading') return <Centered>Loading…</Centered>;
   if (state.kind === 'error')
@@ -87,6 +108,15 @@ export function App() {
     const trophies = await api.trophies().catch(() => null); // the save worked; don't report a failed reload as a failed save
     if (trophies) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
   };
+  // Photo changes reload the list; a failed image calls this with no change to get fresh links.
+  const onPhotos = async (change?: () => Promise<unknown>) => {
+    if (isMock()) return;
+    if (change) await change();
+    else if (Date.now() - photosAt.current < 60_000) return;
+    photosAt.current = Date.now();
+    const photos = await api.photos().catch(() => null);
+    if (photos) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, photos } } : prev));
+  };
   const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
@@ -104,7 +134,7 @@ export function App() {
   ) : hash === '#/wtn' ? (
     <WtnHistory data={data} />
   ) : hash === '#/me' ? (
-    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} onTrophies={onTrophies} />
+    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} onTrophies={onTrophies} onPhotos={onPhotos} />
   ) : (
     <Home data={data} />
   );

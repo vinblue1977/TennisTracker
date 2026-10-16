@@ -18,6 +18,7 @@ const m = (date: string, event: string, won: boolean | null, score: string, part
 });
 
 export const mockData: Data = {
+  photos: [],
   trophies: {
     trophies: [
       { id: 't1', event: 'City League Final', date: '2025-09-14', result: 'winner', note: '6-4 6-3' },
