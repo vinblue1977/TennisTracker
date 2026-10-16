@@ -16,7 +16,7 @@ export function WtnHistory({ data }: { data: Data }) {
       </a>
       <h1 class="title">WTN history</h1>
       {now && best !== null ? (
-        <section class="hero" aria-label="Rating trend">
+        <a class="hero" href="#/" aria-label="World Tennis Number, tap to close history">
           <span class="eyebrow">World Tennis Number · Doubles</span>
           <div class="row" style={{ justifyContent: 'space-between' }}>
             <span class="hero-value">{now.point.value.toFixed(2)}</span>
@@ -27,7 +27,7 @@ export function WtnHistory({ data }: { data: Data }) {
             </span>
           </div>
           <Trend points={points} />
-        </section>
+        </a>
       ) : (
         <p class="muted">No WTN yet. It appears after the first sync.</p>
       )}
