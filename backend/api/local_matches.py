@@ -25,7 +25,7 @@ def parse(body: str | None) -> dict[str, Any] | str:
     if not (isinstance(event, str) and 1 <= len(event.strip()) <= 100):
         return "event: 1 to 100 characters"
     try:
-        if not (isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day)):
+        if not (isinstance(day, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", day)):
             raise ValueError(day)
         date.fromisoformat(day)
     except ValueError:

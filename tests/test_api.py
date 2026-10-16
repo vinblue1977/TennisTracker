@@ -361,6 +361,7 @@ def test_logged_match_is_added_edited_and_deleted(table) -> None:
     [
         {"event": ""},
         {"date": "2026-02-30"},
+        {"date": "２０２６-10-10"},
         {"date": "yesterday"},
         {"partner": " "},
         {"opponents": []},
