@@ -7,13 +7,16 @@ import re
 import secrets
 from datetime import UTC, datetime
 from decimal import Decimal
+from functools import cache
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import boto3
 from boto3.dynamodb.conditions import Key
+from botocore.client import Config
+from botocore.exceptions import ClientError
 
-from api import trophies
+from api import photos, trophies
 from calendar_sync.fetch import CalendarError, normalize
 from push.notify import device_key, devices, notify
 from push.webpush import allowed_endpoint
@@ -46,6 +49,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _widget_token(table, user, route)
     if route.partition(" ")[2].startswith("/me/trophies"):
         return _trophies(table, user, route, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
+    if route.partition(" ")[2].startswith("/me/photos"):
+        return _photos(table, user, route, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
     if route == "PUT /me/ratings":
         return _put_ratings(table, user, event.get("body"))
     if route == "PUT /me/calendar":
@@ -135,6 +140,7 @@ def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | Non
     if route != "POST /me/trophies" and not (old and trophies.TROPHY_ID.match(trophy_id)):
         return _json(404, {"error": "no such trophy"})
     if old and route == "DELETE /me/trophies/{id}":
+        _delete_photos(table, user, [i for i in _items(table, user, "PHOTO#") if photos.owner_of(i) == f"trophy:{trophy_id}"])
         table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
         if old.get("suggestion"):  # stay gone rather than come back as a suggestion
             table.put_item(Item=trophies.dismissal(user, old["suggestion"]))
@@ -156,6 +162,90 @@ def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | Non
     if old and old["SK"] != item["SK"]:  # the date is part of the key; write the new one first
         table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
     return _json(200, trophies.public(item))
+
+
+@cache
+def _s3() -> Any:
+    region = boto3.Session().region_name
+    return boto3.client(
+        "s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4")
+    )
+
+
+def _delete_photos(table: Any, user: str, items: list[dict[str, Any]]) -> None:
+    for item in items:
+        _s3().delete_object(Bucket=os.environ["PHOTO_BUCKET"], Key=photos.object_key(user, photos.photo_id_of(item)))
+        table.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+
+
+def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) -> dict[str, Any]:
+    bucket = os.environ["PHOTO_BUCKET"]
+    mine = _items(table, user, "PHOTO#")
+    if route == "GET /me/photos":
+        cover = photos.covers(mine)
+        s3 = _s3()
+        shelf = [
+            {
+                "id": photos.photo_id_of(i),
+                "owner": photos.owner_of(i),
+                "cover": photos.photo_id_of(i) in cover,
+                "url": s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": bucket, "Key": photos.object_key(user, photos.photo_id_of(i))},
+                    ExpiresIn=photos.LINK_SECONDS,
+                ),
+            }
+            for i in mine
+        ]
+        return _json(200, {"photos": sorted(shelf, key=lambda p: p["id"])})
+    if route in ("PUT /me/photos/{id}", "DELETE /me/photos/{id}"):
+        item = next((i for i in mine if photos.PHOTO_ID.match(photo_id) and photos.photo_id_of(i) == photo_id), None)
+        if not item:
+            return _json(404, {"error": "no such photo"})
+        if route.startswith("DELETE"):
+            _delete_photos(table, user, [item])
+            return _json(200, {"id": photo_id})
+        for other in (i for i in mine if photos.owner_of(i) == photos.owner_of(item)):  # one cover per owner
+            table.update_item(
+                Key={"PK": other["PK"], "SK": other["SK"]},
+                UpdateExpression="SET cover = :c",
+                ExpressionAttributeValues={":c": other is item},
+            )
+        return _json(200, {"id": photo_id, "cover": True})
+    try:
+        data = json.loads(body or "{}")
+    except ValueError:
+        data = None
+    parsed = photos.parse_owner(data.get("owner")) if isinstance(data, dict) else None
+    if not parsed:
+        return _json(400, {"error": 'body must be {"owner": "match:<id>" or "trophy:<id>"}'})
+    kind, owner_id = parsed
+    prefix, owner = ("MATCH#", f"match:{owner_id}") if kind == "match" else ("TROPHY#", f"trophy:{owner_id}")
+    if not any(i["SK"].endswith(f"#{owner_id}") for i in _items(table, user, prefix)):
+        return _json(404, {"error": f"no such {kind}"})
+    if sum(photos.owner_of(i) == owner for i in mine) >= photos.MAX_PER_OWNER:
+        return _json(400, {"error": f"up to {photos.MAX_PER_OWNER} photos"})
+    if route == "POST /me/photos/upload-url":
+        new = photos.new_id()
+        post = _s3().generate_presigned_post(
+            Bucket=bucket,
+            Key=photos.object_key(user, new),
+            Fields={"Content-Type": "image/jpeg"},
+            Conditions=[{"Content-Type": "image/jpeg"}, ["content-length-range", 1, photos.MAX_BYTES]],
+            ExpiresIn=300,
+        )
+        return _json(200, {"id": new, **post})
+    new = data.get("id") if isinstance(data, dict) else None
+    if route != "POST /me/photos" or not (isinstance(new, str) and photos.PHOTO_ID.match(new)):
+        return _json(400, {"error": "bad photo id"})
+    if any(photos.photo_id_of(i) == new for i in mine):
+        return _json(409, {"error": "already added"})
+    try:
+        _s3().head_object(Bucket=bucket, Key=photos.object_key(user, new))
+    except ClientError:
+        return _json(400, {"error": "upload not found"})
+    table.put_item(Item={**photos.key(user, owner, new), "at": datetime.now(UTC).isoformat()})
+    return _json(200, {"id": new, "owner": owner})
 
 
 def _put_ratings(table: Any, user: str, body: str | None) -> dict[str, Any]:

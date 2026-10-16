@@ -127,7 +127,7 @@ def test_api_routes_require_sign_in_and_site_is_private() -> None:
     template = _template()
     routes = template.find_resources("AWS::ApiGatewayV2::Route")
     by_type = {r["Properties"]["RouteKey"]: r["Properties"]["AuthorizationType"] for r in routes.values()}
-    assert len(by_type) == 20 and by_type.pop("GET /widget") == "NONE"  # token-checked in the handler
+    assert len(by_type) == 25 and by_type.pop("GET /widget") == "NONE"  # token-checked in the handler
     assert set(by_type.values()) == {"JWT"}
     template.has_resource_properties(
         "AWS::S3::Bucket",
@@ -144,6 +144,24 @@ def test_api_routes_require_sign_in_and_site_is_private() -> None:
     template.has_resource_properties(
         "AWS::CloudFront::Distribution",
         Match.object_like({"DistributionConfig": Match.object_like({"DefaultRootObject": "index.html"})}),
+    )
+
+
+def test_photo_bucket_is_private_and_kept() -> None:
+    template = _template()
+    template.has_resource(
+        "AWS::S3::Bucket",
+        {
+            "DeletionPolicy": "Retain",
+            "Properties": Match.object_like(
+                {
+                    "PublicAccessBlockConfiguration": Match.object_like({"BlockPublicAcls": True, "RestrictPublicBuckets": True}),
+                    "CorsConfiguration": Match.object_like(
+                        {"CorsRules": [Match.object_like({"AllowedMethods": ["POST", "GET"]})]}
+                    ),
+                }
+            ),
+        },
     )
 
 

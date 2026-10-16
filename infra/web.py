@@ -50,6 +50,8 @@ class Web(Construct):
             auto_delete_objects=True,
         )
         auth_prefix = f"tennis-tracker-{Aws.ACCOUNT_ID}"
+        photo_bucket_name = f"{auth_prefix}-photos"
+        photo_host = f"{photo_bucket_name}.s3.{region}.amazonaws.com"
         auth_url = f"https://{auth_prefix}.auth.{region}.amazoncognito.com"
         headers = cloudfront.ResponseHeadersPolicy(
             self,
@@ -57,9 +59,11 @@ class Web(Construct):
             security_headers_behavior=cloudfront.ResponseSecurityHeadersBehavior(
                 content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
                     content_security_policy=(
-                        "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; "
+                        "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
+                        f"img-src 'self' data: https://{photo_host}; "
                         "manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; "
-                        f"connect-src 'self' https://*.execute-api.{region}.amazonaws.com {auth_url}; upgrade-insecure-requests"
+                        f"connect-src 'self' https://*.execute-api.{region}.amazonaws.com {auth_url} https://{photo_host}; "
+                        "upgrade-insecure-requests"
                     ),
                     override=True,
                 ),
@@ -102,6 +106,26 @@ class Web(Construct):
             price_class=cloudfront.PriceClass.PRICE_CLASS_100,
         )
         site_url = f"https://{distribution.distribution_domain_name}"
+
+        # ---- photos: private bucket; the app uploads with short-lived signed forms and views with signed links
+        photos = s3.Bucket(
+            self,
+            "PhotoBucket",
+            bucket_name=photo_bucket_name,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            enforce_ssl=True,
+            object_ownership=s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
+            removal_policy=RemovalPolicy.RETAIN,  # your photos outlive a stack teardown
+            cors=[
+                s3.CorsRule(
+                    allowed_origins=[site_url, DEV_ORIGIN],
+                    allowed_methods=[s3.HttpMethods.POST, s3.HttpMethods.GET],
+                    allowed_headers=["*"],
+                    max_age=3600,
+                )
+            ],
+        )
 
         # ---- sign-in: passkeys (Face ID / Touch ID) first; password as backup; no self sign-up
         pool = cognito.UserPool(
@@ -174,11 +198,17 @@ class Web(Construct):
             code=lambda_.Code.from_asset("backend", exclude=["**/__pycache__"]),
             memory_size=256,
             timeout=Duration.seconds(10),
-            environment={"TABLE_NAME": table.table_name, "CALENDAR_FUNCTION": calendar_fn.function_name, **push_env},
+            environment={
+                "TABLE_NAME": table.table_name,
+                "PHOTO_BUCKET": photos.bucket_name,
+                "CALENDAR_FUNCTION": calendar_fn.function_name,
+                **push_env,
+            },
             layers=[layer],
             log_group=logs.LogGroup(self, "ApiLogs", retention=logs.RetentionDays.TWO_WEEKS),
         )
         table.grant_read_write_data(fn)
+        photos.grant_read_write(fn)  # sign uploads and links, check and delete photos
         grant_vapid(fn)  # "send a test"
         calendar_fn.grant_invoke(fn)  # sync right after the calendar link is saved
         api = apigw.HttpApi(
@@ -210,6 +240,11 @@ class Web(Construct):
             (apigw.HttpMethod.POST, "/me/trophies/dismiss"),
             (apigw.HttpMethod.PUT, "/me/trophies/{id}"),
             (apigw.HttpMethod.DELETE, "/me/trophies/{id}"),
+            (apigw.HttpMethod.GET, "/me/photos"),
+            (apigw.HttpMethod.POST, "/me/photos"),
+            (apigw.HttpMethod.POST, "/me/photos/upload-url"),
+            (apigw.HttpMethod.PUT, "/me/photos/{id}"),
+            (apigw.HttpMethod.DELETE, "/me/photos/{id}"),
             (apigw.HttpMethod.GET, "/me/upcoming"),
             (apigw.HttpMethod.PUT, "/me/calendar"),
             (apigw.HttpMethod.GET, "/me/push"),
@@ -272,10 +307,15 @@ class Web(Construct):
         CfnOutput(Stack.of(self), "SiteUrl", value=site_url)
         CfnOutput(Stack.of(self), "ApiUrl", value=api_url)
         CfnOutput(Stack.of(self), "UserPoolId", value=pool.user_pool_id)
-        self._suppress(fn, pool, distribution, bucket)
+        self._suppress(fn, pool, distribution, bucket, photos)
 
     def _suppress(
-        self, fn: lambda_.Function, pool: cognito.UserPool, distribution: cloudfront.Distribution, bucket: s3.Bucket
+        self,
+        fn: lambda_.Function,
+        pool: cognito.UserPool,
+        distribution: cloudfront.Distribution,
+        bucket: s3.Bucket,
+        photos: s3.Bucket,
     ) -> None:
         def reason(rule: str, why: str, applies_to: list | None = None) -> NagPackSuppression:
             return NagPackSuppression(id=rule, reason=why, applies_to=applies_to)
@@ -289,6 +329,11 @@ class Web(Construct):
                     "AwsSolutions-IAM5",
                     "CDK's table grant includes its indexes",
                     [RegexAppliesTo(regex=r"/^Resource::<Table.+\.Arn>\/index\/\*$/g")],
+                ),
+                reason(
+                    "AwsSolutions-IAM5",
+                    "Photos: object-level access to the photo bucket only",
+                    [RegexAppliesTo(regex=r"/^(Action::s3:.*|Resource::.*PhotoBucket.*\/\*)$/g")],
                 ),
             ],
             apply_to_children=True,
@@ -313,6 +358,9 @@ class Web(Construct):
         )
         NagSuppressions.add_resource_suppressions(
             bucket, [reason("AwsSolutions-S1", "Static app files only; access logging costs extra")]
+        )
+        NagSuppressions.add_resource_suppressions(
+            photos, [reason("AwsSolutions-S1", "Personal photos; access logging costs extra")]
         )
         # CDK's own helper Lambdas (bucket deployment, auto-delete): their runtime and policies are CDK's.
         stack = Stack.of(self)
