@@ -14,7 +14,7 @@ describe('fitSize', () => {
 });
 
 describe('forOwner', () => {
-  const p = (id: string, owner: string, cover = false): Photo => ({ id, owner, cover, url: `https://x/${id}` });
+  const p = (id: string, owner: string, cover = false): Photo => ({ id, owner, cover, focus: 20, url: `https://x/${id}` });
   it('keeps one owner, cover first', () => {
     const list = [p('p2', 'trophy:a'), p('p1', 'trophy:a'), p('p3', 'trophy:b'), p('p9', 'trophy:a', true)];
     expect(forOwner(list, 'trophy:a').map((x) => x.id)).toEqual(['p9', 'p1', 'p2']);

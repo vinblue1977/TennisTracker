@@ -38,6 +38,19 @@ def photo_id_of(item: dict[str, Any]) -> str:
     return str(item["SK"]).rsplit("#", 1)[1]
 
 
+DEFAULT_FOCUS = 20  # a little above centre keeps heads in group shots
+
+
+def parse_focus(value: Any) -> int | None:
+    """The focus as a whole number 0-100, or None if it is anything else."""
+    ok = isinstance(value, int | float) and not isinstance(value, bool) and 0 <= value <= 100
+    return int(value) if ok else None
+
+
+def focus_of(item: dict[str, Any]) -> int:
+    return int(item.get("focus", DEFAULT_FOCUS))
+
+
 def covers(items: list[dict[str, Any]]) -> set[str]:
     """Ids of each owner's cover: the one flagged, else the first uploaded."""
     by_owner: dict[str, list[dict[str, Any]]] = {}
