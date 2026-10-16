@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 
 import { formatDate, matchDate, ratingHistory, shortName, wtnAfter } from '../data';
 import { UpcomingCard } from '../components/Upcoming';
+import { forOwner } from '../photos';
 import type { Data, Match } from '../types';
 
 const result = (m: Match) => (m.won === true ? 'W' : m.won === false ? 'L' : 'N');
@@ -35,7 +36,7 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '' }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string }) {
+export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', onPhotos }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; onPhotos?: () => Promise<void> }) {
   const [query, setQuery] = useState('');
   const [event, setEvent] = useState('');
   const points = ratingHistory(data.ratings, data.matches);
@@ -98,10 +99,12 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
         const y = matchDate(m).slice(0, 4);
         const header = y !== year ? <h2 class="year">{(year = y)}</h2> : null;
         const after = wtnAfter(points, m);
+        const cover = forOwner(data.photos, `match:${m.id}`)[0];
         return (
           <>
             {header}
             <a class="match" href={matchHref(m)}>
+              {cover && <img class="match-cover" src={cover.url} alt="" loading="lazy" onError={() => onPhotos?.()} />}
               <div class="row" style={{ gap: '10px' }}>
                 <MatchHeader m={m} detail={formatDate(matchDate(m))} />
               </div>

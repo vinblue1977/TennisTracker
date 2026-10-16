@@ -127,13 +127,13 @@ export function App() {
   const screen = detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} />
   ) : withName ? (
-    <Matches key={withName} data={data} person={safeDecode(withName)} />
+    <Matches key={withName} data={data} person={safeDecode(withName)} onPhotos={onPhotos} />
   ) : hash === '#/stats' ? (
     <Stats data={data} />
   ) : hash === '#/matches' ? (
-    <Matches data={data} />
+    <Matches data={data} onPhotos={onPhotos} />
   ) : hash === '#/upsets' ? (
-    <Matches data={data} upsetsOnly />
+    <Matches data={data} upsetsOnly onPhotos={onPhotos} />
   ) : hash === '#/upcoming' ? (
     <Matches data={data} upcomingTab />
   ) : hash === '#/wtn' ? (

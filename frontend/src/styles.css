@@ -68,6 +68,7 @@ a.hero { color: inherit; text-decoration: none; }
 .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .score { font: 600 19px var(--display); white-space: nowrap; }
 
+.match-cover { width: calc(100% + 28px); margin: -12px -14px 4px; height: 130px; object-fit: cover; border-radius: 16px 16px 0 0; }
 .match { display: flex; flex-direction: column; gap: 6px; background: var(--card); border-radius: 16px; padding: 12px 14px; color: var(--text); text-decoration: none; }
 .year { margin: 8px 4px 0; font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: 0.6px; }
 
