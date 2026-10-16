@@ -5,3 +5,4 @@ ruff>=0.16.10
 pip-audit>=2.10.1
 moto[dynamodb,sns,sqs]>=5.2.3
 boto3>=1.43.110
+pytest-xdist>=3.8.0

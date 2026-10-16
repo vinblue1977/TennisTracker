@@ -47,11 +47,12 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
 
-  checks:
+  # Three parallel jobs; `checks` (the required status) passes only if all of them pass.
+  python:
     needs: scope
     if: needs.scope.outputs.run_checks == 'true'
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -59,44 +60,99 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
-        with:
-          node-version: "22"
-          cache: npm  # pyright, the CDK CLI and the PWA's tools, keyed on both lockfiles
-          cache-dependency-path: |
-            package-lock.json
-            frontend/package-lock.json
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           version: "0.12.19"
           enable-cache: true
           cache-dependency-glob: requirements*.txt
-      - name: Install dependencies
-        # uv is much faster than pip; --seed keeps pip in the venv.
+      - name: Install Python dependencies (uv; --seed keeps pip in the venv)
         run: |
           uv venv --seed --python "$(which python)" .venv
           uv pip install --python .venv/bin/python -r requirements-dev.txt
           uv pip check --python .venv/bin/python
-      - name: Install pyright and the CDK CLI (exact versions from package-lock.json; no install scripts)
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm  # pyright and the CDK CLI, keyed on package-lock.json
+      - name: Install pyright and the CDK CLI (exact versions; no install scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Personal-data guard (public repo)
         run: make privacy
         env:
           PII_DENYLIST: ${{ secrets.PII_DENYLIST }}  # private names to block; never printed
       - name: Lint (ruff with Bandit security rules, pyright types)
         run: make lint
-      - name: Unit and infrastructure tests
+      - name: Unit and infrastructure tests (parallel)
         run: make test
-      - name: Frontend (ESLint, types, Vitest, build, 150 KB size limit)
+
+  frontend:
+    needs: scope
+    if: needs.scope.outputs.run_checks == 'true'
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install the PWA's tools (exact versions; no install scripts)
+        run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
+      - name: ESLint, types, Vitest, build, 150 KB size limit
         run: make frontend
+      - name: Vulnerability audit of shipped packages
+        run: npm audit --prefix frontend --omit=dev --audit-level=high
+
+  synth:
+    needs: scope
+    if: needs.scope.outputs.run_checks == 'true'
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+        with:
+          version: "0.12.19"
+          enable-cache: true
+          cache-dependency-glob: requirements*.txt
+      - name: Install Python dependencies (uv; --seed keeps pip in the venv)
+        run: |
+          uv venv --seed --python "$(which python)" .venv
+          uv pip install --python .venv/bin/python -r requirements-dev.txt
+          uv pip check --python .venv/bin/python
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm  # pyright and the CDK CLI, keyed on package-lock.json
+      - name: Install pyright and the CDK CLI (exact versions; no install scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Dependency vulnerability audit
         run: make audit
-      - name: Synthesize and run cdk-nag security checks
-        run: make synth
+      - name: Synthesize and run cdk-nag security checks (stand-in app files)
+        run: make synth SITE_DIR=tests/fixtures/site
+
+  checks:
+    needs: [scope, python, frontend, synth]
+    if: always() && needs.scope.outputs.run_checks == 'true'
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 2
+    steps:
+      - name: All checks passed
+        run: |
+          echo "python=$PY frontend=$FE synth=$SY"
+          [ "$PY" = success ] && [ "$FE" = success ] && [ "$SY" = success ]
         env:
-          CDK_DEFAULT_REGION: us-east-2
+          PY: ${{ needs.python.result }}
+          FE: ${{ needs.frontend.result }}
+          SY: ${{ needs.synth.result }}
 
   # Lints the workflow files: actionlint (syntax, expressions, shell) and zizmor (Actions security).
   workflow-lint:
@@ -201,6 +257,7 @@ jobs:
           uv pip install --python .venv/bin/python -r requirements-dev.txt
           make audit  # an advisory published since the PR stops the deploy (the PR already ran the tests)
           npm ci --ignore-scripts --no-audit --no-fund  # the pinned CDK CLI (package-lock.json)
+          npm ci --prefix frontend --ignore-scripts --no-audit --no-fund && npm --prefix frontend run build
           : "${ALERT_EMAIL:?set the ALERT_EMAIL secret}"  # a missing secret would silently drop failure emails
           . .venv/bin/activate
           npx --no-install cdk deploy --require-approval never -c alertEmail="$ALERT_EMAIL" --outputs-file cdk-outputs.json
@@ -209,6 +266,12 @@ jobs:
       - name: Smoke test
         run: |
           table="$(jq -er '.TennisTracker.TableName' cdk-outputs.json)"
-          status="$(aws dynamodb describe-table --table-name "$table" --query 'Table.TableStatus' --output text)"
-          echo "$table -> $status"
-          [ "$status" = ACTIVE ]
+          site="$(jq -er '.TennisTracker.SiteUrl' cdk-outputs.json)"
+          api="$(jq -er '.TennisTracker.ApiUrl' cdk-outputs.json)"
+          [ "$(aws dynamodb describe-table --table-name "$table" --query 'Table.TableStatus' --output text)" = ACTIVE ]
+          check() {
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 --retry 3 --retry-all-errors "$2")"
+            echo "$2 -> $code (want $1)"; [ "$code" = "$1" ]
+          }
+          check 200 "$site/"
+          check 401 "$api/me/profile"  # sign-in required
