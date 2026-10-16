@@ -63,11 +63,14 @@ export function App() {
   const { data } = state;
   const onSave = async (id: string, note: string, starred: boolean) => {
     const saved = import.meta.env.DEV && isMock() ? { note, starred } : await api.saveExtras(id, note, starred);
-    setState({ kind: 'ready', data: { ...data, matches: data.matches.map((m) => (m.id === id ? { ...m, ...saved } : m)) } });
+    // From the latest state, so two quick saves (star + note) don't overwrite each other.
+    setState((prev) =>
+      prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, matches: prev.data.matches.map((m) => (m.id === id ? { ...m, ...saved } : m)) } } : prev,
+    );
   };
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
-    <MatchDetail key={detailId} data={data} id={decodeURIComponent(detailId)} onSave={onSave} />
+    <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
   ) : hash === '#/matches' ? (
     <Matches data={data} />
   ) : hash === '#/me' ? (
@@ -81,6 +84,15 @@ export function App() {
       <TabBar active={detailId ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
     </div>
   );
+}
+
+/** A hand-edited or badly encoded link shows "Match not found" instead of a blank screen. */
+export function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function Centered({ children }: { children: preact.ComponentChildren }) {
