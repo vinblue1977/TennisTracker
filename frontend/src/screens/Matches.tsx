@@ -104,7 +104,6 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
           <>
             {header}
             <a class="match" href={matchHref(m)}>
-              {cover && <img class="match-cover" src={cover.url} alt="" loading="lazy" onError={() => onPhotos?.()} />}
               <div class="row" style={{ gap: '10px' }}>
                 <MatchHeader m={m} detail={formatDate(matchDate(m))} />
               </div>
@@ -121,6 +120,11 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
                 {m.starred && <span aria-label="Best match">★</span>}
                 {m.note && <span class="muted">· note</span>}
               </div>
+              {cover && (
+                <span class="match-photo">
+                  <img src={cover.url} alt="" loading="lazy" onError={() => onPhotos?.()} />
+                </span>
+              )}
             </a>
           </>
         );
