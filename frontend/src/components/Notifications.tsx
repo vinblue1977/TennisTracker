@@ -50,8 +50,12 @@ export function Notifications({ vapidKey }: { vapidKey: string }) {
   });
   const test = run(async () => {
     const sub = await subscription();
-    if (sub) await api.pushTest(sub.endpoint);
-    return 'Test sent. It should arrive in a few seconds.';
+    if (!sub) {
+      setOn(false); // revoked on the phone (e.g. in Settings)
+      return 'Notifications are off on this iPhone. Turn them on again.';
+    }
+    const { sent } = await api.pushTest(sub.endpoint);
+    return sent ? 'Test sent. It should arrive in a few seconds.' : 'Could not reach this iPhone. Turn notifications off and on again.';
   });
   const turnOff = run(async () => {
     const sub = await subscription();
