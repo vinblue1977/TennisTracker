@@ -58,11 +58,19 @@ export interface Suggestion {
   partner: string;
 }
 
+export interface Photo {
+  id: string;
+  owner: string; // trophy:<id> or match:<id>
+  cover: boolean;
+  url: string; // signed link, valid for 15 minutes
+}
+
 export interface Data {
   trophies: { trophies: Trophy[]; suggestions: Suggestion[] };
   profile: Profile;
   ratings: Rating[];
   matches: Match[];
   upcoming: Upcoming[];
+  photos: Photo[];
   vapidKey?: string; // Web Push public key, from config.json
 }

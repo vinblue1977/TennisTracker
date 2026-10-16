@@ -55,9 +55,10 @@ type MeProps = {
   onCalendar: (url: string) => Promise<void>;
   onRatings: (r: Ratings) => Promise<void>;
   onTrophies: (change: () => Promise<unknown>) => Promise<void>;
+  onPhotos: (change?: () => Promise<unknown>) => Promise<void>;
 };
 
-export function Me({ data, onCalendar, onRatings, onTrophies }: MeProps) {
+export function Me({ data, onCalendar, onRatings, onTrophies, onPhotos }: MeProps) {
   const sync = data.profile.sync;
   const calendar = data.profile.calendar;
   const [link, setLink] = useState('');
@@ -99,7 +100,7 @@ export function Me({ data, onCalendar, onRatings, onTrophies }: MeProps) {
         </a>
       </section>
       <Manual profile={data.profile} onSave={onRatings} />
-      <Trophies data={data.trophies} onChange={onTrophies} />
+      <Trophies data={data.trophies} photos={data.photos} onChange={onTrophies} onPhotos={onPhotos} />
       <Notifications vapidKey={data.vapidKey ?? ''} />
       <Widget />
       <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

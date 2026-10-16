@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { api, initApi } from './api';
 import { initAuth } from './auth';
 import { TabBar } from './components/TabBar';
 import { loadConfig } from './config';
+import { isMock } from './env';
 import { Home } from './screens/Home';
 import { MatchDetail } from './screens/MatchDetail';
 import { Matches } from './screens/Matches';
@@ -27,9 +28,6 @@ const useHash = () => {
   return hash;
 };
 
-// Dev only (`npm run dev`, then /?mock): made-up data, no sign-in. Removed from production builds.
-const isMock = () => import.meta.env.DEV && new URLSearchParams(location.search).has('mock');
-
 async function loadData(): Promise<Data | null> {
   if (import.meta.env.DEV && isMock()) {
     return (await import('./mock')).mockData;
@@ -37,8 +35,15 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
-  const [profile, ratings, matches, upcoming, trophies] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming(), api.trophies().catch(() => ({ trophies: [], suggestions: [] }))]);
-  return { profile, ratings, matches, upcoming, trophies, vapidKey: config.vapidPublicKey ?? '' };
+  const [profile, ratings, matches, upcoming, trophies, photos] = await Promise.all([
+    api.profile(),
+    api.ratings(),
+    api.matches(),
+    api.upcoming(),
+    api.trophies().catch(() => ({ trophies: [], suggestions: [] })),
+    api.photos().catch(() => []),
+  ]);
+  return { profile, ratings, matches, upcoming, trophies, photos, vapidKey: config.vapidPublicKey ?? '' };
 }
 
 export function App() {
@@ -50,6 +55,28 @@ export function App() {
       .then((data) => data && setState({ kind: 'ready', data }))
       .catch((e: Error) => setState({ kind: 'error', message: e.message }));
   }, []);
+
+  // Photo links last 15 minutes: refresh when you come back to the app and every 10 minutes while it is open.
+  const photosAt = useRef(Date.now()); // last successful fetch
+  const errorAt = useRef(0); // last refresh caused by a broken image
+  const loadPhotos = async () => {
+    const photos = await api.photos().catch(() => null); // a failed reload keeps the current list
+    if (!photos) return;
+    photosAt.current = Date.now();
+    setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, photos } } : prev));
+  };
+  const ready = state.kind === 'ready';
+  useEffect(() => {
+    if (!ready || isMock()) return;
+    const visible = () => document.visibilityState === 'visible';
+    const onVisible = () => visible() && Date.now() - photosAt.current > 60_000 && void loadPhotos();
+    const timer = setInterval(() => visible() && void loadPhotos(), 10 * 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [ready]);
 
   if (state.kind === 'loading') return <Centered>Loading…</Centered>;
   if (state.kind === 'error')
@@ -87,6 +114,14 @@ export function App() {
     const trophies = await api.trophies().catch(() => null); // the save worked; don't report a failed reload as a failed save
     if (trophies) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
   };
+  // Photo changes reload the list; a failed image calls this with no change to get fresh links (at most once a minute).
+  const onPhotos = async (change?: () => Promise<unknown>) => {
+    if (isMock()) return;
+    if (change) await change();
+    else if (Date.now() - errorAt.current < 60_000) return;
+    else errorAt.current = Date.now();
+    await loadPhotos();
+  };
   const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
@@ -104,7 +139,7 @@ export function App() {
   ) : hash === '#/wtn' ? (
     <WtnHistory data={data} />
   ) : hash === '#/me' ? (
-    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} onTrophies={onTrophies} />
+    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} onTrophies={onTrophies} onPhotos={onPhotos} />
   ) : (
     <Home data={data} />
   );

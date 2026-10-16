@@ -1,6 +1,6 @@
 import { getAccessToken } from './auth';
 import type { Config } from './config';
-import type { Data, Match, Profile, Rating, Trophy, Upcoming } from './types';
+import type { Data, Match, Photo, Profile, Rating, Trophy, Upcoming } from './types';
 
 export type TrophyInput = Omit<Trophy, 'id'> & { suggestion?: string };
 
@@ -37,6 +37,12 @@ export const api = {
   editTrophy: (id: string, t: TrophyInput) => call<Trophy>(`/me/trophies/${id}`, { method: 'PUT', body: JSON.stringify(t) }),
   deleteTrophy: (id: string) => call<{ id: string }>(`/me/trophies/${id}`, { method: 'DELETE' }),
   dismissSuggestion: (id: string) => call<{ dismissed: boolean }>('/me/trophies/dismiss', { method: 'POST', body: JSON.stringify({ id }) }),
+  photos: () => call<{ photos: Photo[] }>('/me/photos').then((r) => r.photos),
+  photoUploadUrl: (owner: string) =>
+    call<{ id: string; url: string; fields: Record<string, string> }>('/me/photos/upload-url', { method: 'POST', body: JSON.stringify({ owner }) }),
+  photoConfirm: (owner: string, id: string) => call<{ id: string }>('/me/photos', { method: 'POST', body: JSON.stringify({ owner, id }) }),
+  photoCover: (id: string) => call<{ id: string }>(`/me/photos/${id}`, { method: 'PUT' }),
+  deletePhoto: (id: string) => call<{ id: string }>(`/me/photos/${id}`, { method: 'DELETE' }),
   saveRatings: (ratings: { utr?: number | null; ntrp?: number | null }) =>
     call<{ utr: number | null; ntrp: number | null }>('/me/ratings', { method: 'PUT', body: JSON.stringify(ratings) }),
   saveCalendar: (url: string) => call<{ connected: boolean }>('/me/calendar', { method: 'PUT', body: JSON.stringify({ url }) }),
