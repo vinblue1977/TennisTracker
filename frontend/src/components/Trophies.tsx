@@ -2,13 +2,13 @@ import { useState } from 'preact/hooks';
 
 import { api, type TrophyInput } from '../api';
 import { formatDate } from '../data';
+import { isMock } from '../env';
 import { forOwner } from '../photos';
 import type { Data, Photo, Suggestion, Trophy } from '../types';
 import { PhotoStrip } from './Photos';
 
 const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in the phone's time zone
 const icon = (t: Trophy) => (t.result === 'winner' ? '🏆' : '🥈');
-const mock = () => import.meta.env.DEV && new URLSearchParams(location.search).has('mock');
 
 type Form = { id?: string; event: string; date: string; result: Trophy['result']; note: string; suggestion?: string };
 type Props = {
@@ -76,7 +76,7 @@ export function Trophies({ data, photos, onChange, onPhotos }: Props) {
   const [busy, setBusy] = useState(false);
   const input = (f: Form): TrophyInput => ({ event: f.event.trim(), date: f.date, result: f.result, note: f.note.trim(), ...(f.suggestion ? { suggestion: f.suggestion } : {}) });
   const save = async (f: Form) => {
-    if (mock()) return setForm(null);
+    if (isMock()) return setForm(null);
     await onChange(() => (f.id ? api.editTrophy(f.id, input(f)) : api.addTrophy(input(f))));
     setForm(null);
   };
@@ -84,7 +84,7 @@ export function Trophies({ data, photos, onChange, onPhotos }: Props) {
     setError('');
     setBusy(true);
     try {
-      if (!mock()) await onChange(change);
+      if (!isMock()) await onChange(change);
     } catch {
       setError('Could not save. Try again.');
     }

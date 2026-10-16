@@ -4,6 +4,7 @@ import { api, initApi } from './api';
 import { initAuth } from './auth';
 import { TabBar } from './components/TabBar';
 import { loadConfig } from './config';
+import { isMock } from './env';
 import { Home } from './screens/Home';
 import { MatchDetail } from './screens/MatchDetail';
 import { Matches } from './screens/Matches';
@@ -26,9 +27,6 @@ const useHash = () => {
   }, []);
   return hash;
 };
-
-// Dev only (`npm run dev`, then /?mock): made-up data, no sign-in. Removed from production builds.
-const isMock = () => import.meta.env.DEV && new URLSearchParams(location.search).has('mock');
 
 async function loadData(): Promise<Data | null> {
   if (import.meta.env.DEV && isMock()) {
@@ -58,18 +56,26 @@ export function App() {
       .catch((e: Error) => setState({ kind: 'error', message: e.message }));
   }, []);
 
-  // Photo links last 15 minutes, so fetch fresh ones when you come back to the app (at most once a minute).
-  const photosAt = useRef(Date.now());
+  // Photo links last 15 minutes: refresh when you come back to the app and every 10 minutes while it is open.
+  const photosAt = useRef(Date.now()); // last successful fetch
+  const errorAt = useRef(0); // last refresh caused by a broken image
+  const loadPhotos = async () => {
+    const photos = await api.photos().catch(() => null); // a failed reload keeps the current list
+    if (!photos) return;
+    photosAt.current = Date.now();
+    setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, photos } } : prev));
+  };
   const ready = state.kind === 'ready';
   useEffect(() => {
     if (!ready || isMock()) return;
-    const refresh = () => {
-      if (document.visibilityState !== 'visible' || Date.now() - photosAt.current < 60_000) return;
-      photosAt.current = Date.now();
-      api.photos().then((photos) => setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, photos } } : prev))).catch(() => undefined);
+    const visible = () => document.visibilityState === 'visible';
+    const onVisible = () => visible() && Date.now() - photosAt.current > 60_000 && void loadPhotos();
+    const timer = setInterval(() => visible() && void loadPhotos(), 10 * 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
-    document.addEventListener('visibilitychange', refresh);
-    return () => document.removeEventListener('visibilitychange', refresh);
   }, [ready]);
 
   if (state.kind === 'loading') return <Centered>Loading…</Centered>;
@@ -108,14 +114,13 @@ export function App() {
     const trophies = await api.trophies().catch(() => null); // the save worked; don't report a failed reload as a failed save
     if (trophies) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
   };
-  // Photo changes reload the list; a failed image calls this with no change to get fresh links.
+  // Photo changes reload the list; a failed image calls this with no change to get fresh links (at most once a minute).
   const onPhotos = async (change?: () => Promise<unknown>) => {
     if (isMock()) return;
     if (change) await change();
-    else if (Date.now() - photosAt.current < 60_000) return;
-    photosAt.current = Date.now();
-    const photos = await api.photos().catch(() => null);
-    if (photos) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, photos } } : prev));
+    else if (Date.now() - errorAt.current < 60_000) return;
+    else errorAt.current = Date.now();
+    await loadPhotos();
   };
   const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
