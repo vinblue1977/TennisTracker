@@ -44,7 +44,7 @@ jobs:
           code="$(grep -Ev '^(docs/|[^/]+\.md$)' <<<"$changed" || true)"
           echo "run_checks=$([ -z "$changed" ] || [ -n "$code" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           # Python packages only change with the requirements files; the weekly run and every deploy still audit.
-          echo "deps_changed=$(grep -qE '(^|/)requirements[^/]*\.txt$' <<<"$changed" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "deps_changed=$(grep -qE '(^|/)requirements[^/]*\.(txt|in)$' <<<"$changed" && echo true || echo false)" >> "$GITHUB_OUTPUT"
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -67,11 +67,14 @@ jobs:
         with:
           version: "0.12.19"
           enable-cache: true
-          cache-dependency-glob: requirements*.txt
+          cache-dependency-glob: |
+            requirements*.txt
+            layer/requirements.txt
       - name: Install Python dependencies (uv; --seed keeps pip in the venv)
         run: |
           uv venv --seed --python "$(which python)" .venv
           uv pip install --python .venv/bin/python -r requirements-dev.txt
+          uv pip install --python .venv/bin/python --require-hashes --no-deps -r layer/requirements.txt  # what ships
           uv pip check --python .venv/bin/python
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
@@ -125,11 +128,14 @@ jobs:
         with:
           version: "0.12.19"
           enable-cache: true
-          cache-dependency-glob: requirements*.txt
+          cache-dependency-glob: |
+            requirements*.txt
+            layer/requirements.txt
       - name: Install Python dependencies (uv; --seed keeps pip in the venv)
         run: |
           uv venv --seed --python "$(which python)" .venv
           uv pip install --python .venv/bin/python -r requirements-dev.txt
+          uv pip install --python .venv/bin/python --require-hashes --no-deps -r layer/requirements.txt  # what ships
           uv pip check --python .venv/bin/python
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
@@ -141,7 +147,7 @@ jobs:
         if: needs.scope.outputs.deps_changed == 'true'
         run: make audit
       - name: Synthesize and run cdk-nag security checks (stand-in app files)
-        run: make synth SITE_DIR=tests/fixtures/site
+        run: make synth SITE_DIR=tests/fixtures/site LAYER_DIR=tests/fixtures/layer
 
   checks:
     needs: [scope, python, frontend, synth]
@@ -251,7 +257,9 @@ jobs:
         with:
           version: "0.12.19"
           enable-cache: true
-          cache-dependency-glob: requirements*.txt
+          cache-dependency-glob: |
+            requirements*.txt
+            layer/requirements.txt
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
@@ -262,6 +270,7 @@ jobs:
           uv venv --seed --python "$(which python)" .venv
           uv pip install --python .venv/bin/python -r requirements-dev.txt
           make audit  # an advisory published since the PR stops the deploy (the PR already ran the tests)
+          make layer  # the locked runtime dependencies, hash-checked
           npm ci --ignore-scripts --no-audit --no-fund  # the pinned CDK CLI (package-lock.json)
           npm ci --prefix frontend --ignore-scripts --no-audit --no-fund && npm --prefix frontend run build
           : "${ALERT_EMAIL:?set the ALERT_EMAIL secret}"  # a missing secret would silently drop failure emails

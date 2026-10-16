@@ -3,6 +3,7 @@ export interface Config {
   apiUrl: string;
   authUrl: string;
   clientId: string;
+  vapidPublicKey?: string;
 }
 
 export async function loadConfig(): Promise<Config> {

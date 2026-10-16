@@ -57,8 +57,23 @@ def sync_user(table: Any, profile: dict[str, Any], now: datetime | None = None) 
     with table.batch_writer() as batch:
         for sk in existing - wanted.keys():
             batch.delete_item(Key={"PK": pk, "SK": sk})  # cancelled, moved or past
-        for item in wanted.values():
-            batch.put_item(Item=item)
+        for sk, item in wanted.items():
+            if sk not in existing:
+                batch.put_item(Item=item)
+    for sk in wanted.keys() & existing:  # update in place, keeping the reminders already sent
+        item = wanted[sk]
+        table.update_item(
+            Key={"PK": pk, "SK": sk},
+            UpdateExpression="SET title = :t, #loc = :l, #start = :s, #end = :e, allDay = :a",
+            ExpressionAttributeNames={"#loc": "location", "#start": "start", "#end": "end"},
+            ExpressionAttributeValues={
+                ":t": item["title"],
+                ":l": item["location"],
+                ":s": item["start"],
+                ":e": item["end"],
+                ":a": item["allDay"],
+            },
+        )
     table.put_item(
         Item={**state_key, "status": "ok", "lastRunAt": now.isoformat(), "consecutiveFailures": 0, "upcoming": len(wanted)}
     )

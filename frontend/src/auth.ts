@@ -15,7 +15,7 @@ interface Tokens {
   expires_at: number;
 }
 
-let cfg: Config;
+let cfg: Config | undefined; // set by initAuth (not in dev demo mode)
 
 const b64url = (bytes: ArrayBuffer | Uint8Array) =>
   btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -23,6 +23,7 @@ const randomString = (len = 32) => b64url(crypto.getRandomValues(new Uint8Array(
 const redirectUri = () => `${location.origin}/`;
 
 function authUrl(path: string, params: Record<string, string>): string {
+  if (!cfg) return '#';
   const url = new URL(`${cfg.authUrl}${path}`);
   url.search = new URLSearchParams({ client_id: cfg.clientId, ...params }).toString();
   return url.toString();
@@ -81,6 +82,7 @@ function save(t: { access_token: string; id_token?: string; refresh_token?: stri
 }
 
 async function tokenRequest(params: Record<string, string>) {
+  if (!cfg) throw new Error('Not configured');
   const res = await fetch(`${cfg.authUrl}/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

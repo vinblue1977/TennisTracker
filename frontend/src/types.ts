@@ -45,4 +45,5 @@ export interface Data {
   ratings: Rating[];
   matches: Match[];
   upcoming: Upcoming[];
+  vapidKey?: string; // Web Push public key, from config.json
 }

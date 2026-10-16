@@ -1,13 +1,24 @@
 {
   "app": "python3 app.py",
   "watch": {
-    "include": ["**"],
-    "exclude": ["README.md", "cdk*.json", "**/__pycache__", "tests", ".venv", "build", "node_modules"]
+    "include": [
+      "**"
+    ],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/__pycache__",
+      "tests",
+      ".venv",
+      "build",
+      "node_modules"
+    ]
   },
   "context": {
     "githubRepo": "vinblue1977@13391763/TennisTracker@1420759095",
     "@aws-cdk/core:checkSecretUsage": true,
     "@aws-cdk/aws-iam:minimizePolicies": true,
-    "@aws-cdk/core:enablePartitionLiterals": true
+    "@aws-cdk/core:enablePartitionLiterals": true,
+    "vapidPublicKey": "BIVtkouu-eKOe6eRRGSIvamDkkRDdbGYKAWIKBqvyO1tbBreISXa74oFb1WqRTwAdcuZHyfZJq11xqcQOdL15WA"
   }
 }

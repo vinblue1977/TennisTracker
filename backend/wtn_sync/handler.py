@@ -7,6 +7,7 @@ from typing import Any
 import boto3
 from boto3.dynamodb.conditions import Attr
 
+from push.notify import notify
 from wtn_sync.client import WtnApiError, fetch_history
 from wtn_sync.items import match_item, rating_item
 from wtn_sync.parse import WtnShapeError, parse
@@ -68,7 +69,19 @@ def sync_user(table: Any, profile: dict[str, Any], now: datetime | None = None) 
         }
     )
     changed = bool(latest and latest.date != previous.get("latestDate")) or new_matches > 0
+    if changed and previous:  # not on the very first import
+        _notify_change(table, user_id, previous.get("latestValue"), latest.value if latest else None, max(new_matches, 0))
     return {"user": user_id, "status": "ok", "matches": len(matches), "newMatches": max(new_matches, 0), "changed": changed}
+
+
+def _notify_change(table: Any, user_id: str, before: Any, after: float | None, new_matches: int) -> None:
+    parts = []
+    if after is not None and before is not None and float(before) != after:
+        parts.append(f"WTN {float(before):.2f} → {after:.2f}")
+    if new_matches:
+        parts.append(f"{new_matches} new match{'es' if new_matches > 1 else ''}")
+    if parts:
+        notify(table, user_id, "World Tennis Number", " · ".join(parts), "/")
 
 
 def _alert(message: str) -> None:
