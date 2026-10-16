@@ -138,3 +138,6 @@ a.card.tap { display: flex; }
 .viewer-nav.next { right: 0; }
 .button.danger { background: var(--loss); color: var(--ground); }
 .button.danger-text { color: var(--loss-text); }
+.fold { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 28px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; }
+.chev { color: var(--muted); transition: transform 0.2s; }
+.chev.up { transform: rotate(180deg); }
