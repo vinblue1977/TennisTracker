@@ -319,3 +319,64 @@ def test_a_file_that_is_not_a_jpeg_is_rejected_and_removed(bucket) -> None:
 def test_a_confirmed_upload_moves_out_of_incoming(bucket) -> None:
     photo = _photo(bucket)[1]["id"]
     assert [o["Key"] for o in bucket.list_objects_v2(Bucket="photos")["Contents"]] == [f"owner/{photo}.jpg"]
+
+
+LOGGED = {
+    "event": "Club night",
+    "date": "2026-10-10",
+    "partner": "Pat Partner",
+    "opponents": ["Sam One", "Sam Two"],
+    "score": "6-3 6-4",
+    "won": True,
+}
+
+
+def test_logged_match_is_added_edited_and_deleted(table) -> None:
+    status, body = call("POST /me/matches", body=json.dumps(LOGGED))
+    assert status == 200 and body["id"].startswith("local:")
+    mid = body["id"]
+    logged = next(m for m in call("GET /me/matches")[1]["matches"] if m["id"] == mid)
+    assert (
+        logged["kind"] == "DOUBLE"
+        and logged["source"] == "LOCAL"
+        and logged["partners"][0]["name"] == "Pat Partner"
+        and len(logged["opponents"]) == 2
+    )
+    call("PUT /me/matches/{id}/extras", match_id=mid, body='{"note": "fun", "starred": true}')
+    assert (
+        call("PUT /me/matches/{id}", match_id=mid, body=json.dumps({**LOGGED, "date": "2026-10-11", "score": "6-3 3-6 6-4"}))[0]
+        == 200
+    )
+    matches = [m for m in call("GET /me/matches")[1]["matches"] if m["id"] == mid]
+    assert (
+        len(matches) == 1 and matches[0]["SK"] == f"MATCH#2026-10-11#{mid}" and matches[0]["note"] == "fun"
+    )  # moved, extras kept
+    assert call("DELETE /me/matches/{id}", match_id=mid)[0] == 200
+    assert all(m["id"] != mid for m in call("GET /me/matches")[1]["matches"])
+    assert table.get_item(Key={"PK": "USER#owner", "SK": f"EXTRA#{mid}"}).get("Item") is None
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"event": ""},
+        {"date": "2026-02-30"},
+        {"date": "yesterday"},
+        {"partner": " "},
+        {"opponents": []},
+        {"opponents": ["a", "b", "c"]},
+        {"opponents": [5]},
+        {"score": ""},
+        {"won": "yes"},
+    ],
+)
+def test_logged_match_rejects_bad_input(table, change: dict) -> None:
+    assert call("POST /me/matches", body=json.dumps({**LOGGED, **change}))[0] == 400
+    assert call("POST /me/matches", body="[]")[0] == 400
+
+
+def test_synced_and_other_users_matches_cannot_be_changed(table) -> None:
+    for mid in ("wtn:m1", "local:0123456789abcdef", "../x"):
+        assert call("PUT /me/matches/{id}", match_id=mid, body=json.dumps(LOGGED))[0] == 404
+        assert call("DELETE /me/matches/{id}", match_id=mid)[0] == 404
+    assert table.get_item(Key={"PK": "USER#owner", "SK": "MATCH#2026-10-02#wtn:m1"}).get("Item")

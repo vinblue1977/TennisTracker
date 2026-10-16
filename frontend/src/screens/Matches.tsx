@@ -1,5 +1,7 @@
 import { useState } from 'preact/hooks';
 
+import { api } from '../api';
+import { MatchForm, blankMatch } from '../components/MatchForm';
 import { formatDate, matchDate, ratingHistory, shortName, wtnAfter } from '../data';
 import { UpcomingCard } from '../components/Upcoming';
 import { forOwner } from '../photos';
@@ -36,9 +38,10 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', onPhotos }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; onPhotos?: () => Promise<void> }) {
+export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', onPhotos, onMatches }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; onPhotos?: () => Promise<void>; onMatches?: <T>(change: () => Promise<T>) => Promise<T> }) {
   const [query, setQuery] = useState('');
   const [event, setEvent] = useState('');
+  const [logging, setLogging] = useState(false);
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
   const events = new Map<string, { count: number; latest: string }>();
@@ -79,6 +82,21 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
         </>
       ) : (
         <>
+      {onMatches && !upsetsOnly && !person &&
+        (logging ? (
+          <MatchForm
+            initial={blankMatch()}
+            onCancel={() => setLogging(false)}
+            onSave={async (m) => {
+              const { id } = await onMatches(() => api.addMatch(m));
+              location.hash = `#/match/${encodeURIComponent(id)}`; // add photos and a note there
+            }}
+          />
+        ) : (
+          <button class="button" type="button" onClick={() => setLogging(true)}>
+            + Log match
+          </button>
+        ))}
       <label>
         <span class="sr-only">Search</span>
         <input type="search" placeholder="Search partner, opponent, event" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
