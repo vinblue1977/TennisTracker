@@ -20,6 +20,11 @@ def object_key(user: str, photo_id: str) -> str:
     return f"{user}/{photo_id}.jpg"
 
 
+def incoming_key(user: str, photo_id: str) -> str:
+    """Where an upload lands until it is confirmed; the bucket expires this prefix after a day."""
+    return f"incoming/{user}/{photo_id}.jpg"
+
+
 def key(user: str, owner: str, photo_id: str) -> dict[str, str]:
     return {"PK": f"USER#{user}", "SK": f"PHOTO#{owner}#{photo_id}"}
 

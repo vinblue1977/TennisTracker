@@ -125,7 +125,9 @@ class Web(Construct):
             lifecycle_rules=[
                 s3.LifecycleRule(
                     noncurrent_version_expiration=Duration.days(7), abort_incomplete_multipart_upload_after=Duration.days(1)
-                )
+                ),
+                # Uploads land here until the app confirms them; unconfirmed ones are not kept.
+                s3.LifecycleRule(prefix="incoming/", expiration=Duration.days(1), noncurrent_version_expiration=Duration.days(1)),
             ],
             object_ownership=s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
             removal_policy=RemovalPolicy.RETAIN,  # your photos outlive a stack teardown

@@ -204,3 +204,9 @@ def test_reminders_run_every_15_minutes_and_lambdas_can_only_read_the_signing_ke
     statements = [s for p in policies.values() for s in p["Properties"]["PolicyDocument"]["Statement"]]
     ssm = [s for s in statements if "ssm" in json.dumps(s["Action"])]
     assert ssm and all(s["Action"] == "ssm:GetParameter" and "vapid-private-key" in json.dumps(s["Resource"]) for s in ssm)
+
+
+def test_unconfirmed_photo_uploads_expire_after_a_day() -> None:
+    bucket = next(b for b in _template().find_resources("AWS::S3::Bucket").values() if b["Properties"].get("BucketName"))
+    rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+    assert any(r.get("Prefix") == "incoming/" and r["ExpirationInDays"] == 1 for r in rules)
