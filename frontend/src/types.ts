@@ -62,6 +62,7 @@ export interface Photo {
   id: string;
   owner: string; // trophy:<id> or match:<id>
   cover: boolean;
+  focus: number; // 0-100: how far down a tall photo the card crop starts
   url: string; // signed link, valid for 15 minutes
 }
 

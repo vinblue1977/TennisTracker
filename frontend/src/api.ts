@@ -42,6 +42,7 @@ export const api = {
     call<{ id: string; url: string; fields: Record<string, string> }>('/me/photos/upload-url', { method: 'POST', body: JSON.stringify({ owner }) }),
   photoConfirm: (owner: string, id: string) => call<{ id: string }>('/me/photos', { method: 'POST', body: JSON.stringify({ owner, id }) }),
   photoCover: (id: string) => call<{ id: string }>(`/me/photos/${id}`, { method: 'PUT' }),
+  photoFocus: (id: string, focus: number) => call<{ id: string }>(`/me/photos/${id}`, { method: 'PUT', body: JSON.stringify({ focus }) }),
   deletePhoto: (id: string) => call<{ id: string }>(`/me/photos/${id}`, { method: 'DELETE' }),
   saveRatings: (ratings: { utr?: number | null; ntrp?: number | null }) =>
     call<{ utr: number | null; ntrp: number | null }>('/me/ratings', { method: 'PUT', body: JSON.stringify(ratings) }),

@@ -189,6 +189,7 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
                 "id": photos.photo_id_of(i),
                 "owner": photos.owner_of(i),
                 "cover": photos.photo_id_of(i) in cover,
+                "focus": photos.focus_of(i),
                 "url": s3.generate_presigned_url(
                     "get_object",
                     Params={
@@ -210,6 +211,20 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
         if route.startswith("DELETE"):
             _delete_photos(table, user, [item])
             return _json(200, {"id": photo_id})
+        if body:  # {"focus": 0-100}: which part of a tall photo the card shows
+            try:
+                focus = json.loads(body).get("focus")
+            except ValueError, AttributeError:
+                focus = None
+            focus = photos.parse_focus(focus)
+            if focus is None:
+                return _json(400, {"error": "focus must be 0 to 100"})
+            table.update_item(
+                Key={"PK": item["PK"], "SK": item["SK"]},
+                UpdateExpression="SET focus = :f",
+                ExpressionAttributeValues={":f": focus},
+            )
+            return _json(200, {"id": photo_id, "focus": focus})
         for other in (i for i in mine if photos.owner_of(i) == photos.owner_of(item)):  # one cover per owner
             table.update_item(
                 Key={"PK": other["PK"], "SK": other["SK"]},

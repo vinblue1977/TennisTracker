@@ -264,6 +264,16 @@ def test_photos_add_list_cover_delete(bucket) -> None:
     assert call("DELETE /me/photos/{id}", match_id=first)[0] == 404
 
 
+def test_photo_focus_is_saved_and_validated(bucket) -> None:
+    photo = _photo(bucket)[1]["id"]
+    assert call("GET /me/photos")[1]["photos"][0]["focus"] == 20  # the default
+    assert call("PUT /me/photos/{id}", match_id=photo, body='{"focus": 65}') == (200, {"id": photo, "focus": 65})
+    assert call("GET /me/photos")[1]["photos"][0]["focus"] == 65
+    for bad in ('{"focus": 101}', '{"focus": -1}', '{"focus": "top"}', '{"focus": true}', "[1]", "nope"):
+        assert call("PUT /me/photos/{id}", match_id=photo, body=bad)[0] == 400
+    assert call("PUT /me/photos/{id}", match_id="p123456789ab", body='{"focus": 5}')[0] == 404
+
+
 def test_photos_need_an_existing_owner_and_an_uploaded_file(bucket) -> None:
     assert call("POST /me/photos/upload-url", body='{"owner": "match:wtn:nope"}')[0] == 404
     assert call("POST /me/photos/upload-url", body='{"owner": "trophy:t123456789abc"}')[0] == 404
