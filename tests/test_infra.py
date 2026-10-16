@@ -126,7 +126,9 @@ def test_rejects_malformed_repo() -> None:
 def test_api_routes_require_sign_in_and_site_is_private() -> None:
     template = _template()
     routes = template.find_resources("AWS::ApiGatewayV2::Route")
-    assert len(routes) == 11 and all(r["Properties"]["AuthorizationType"] == "JWT" for r in routes.values())
+    by_type = {r["Properties"]["RouteKey"]: r["Properties"]["AuthorizationType"] for r in routes.values()}
+    assert len(by_type) == 15 and by_type.pop("GET /widget") == "NONE"  # token-checked in the handler
+    assert set(by_type.values()) == {"JWT"}
     template.has_resource_properties(
         "AWS::S3::Bucket",
         {

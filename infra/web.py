@@ -211,8 +211,20 @@ class Web(Construct):
             (apigw.HttpMethod.PUT, "/me/push"),
             (apigw.HttpMethod.DELETE, "/me/push"),
             (apigw.HttpMethod.POST, "/me/push/test"),
+            (apigw.HttpMethod.GET, "/me/widget"),
+            (apigw.HttpMethod.POST, "/me/widget"),
+            (apigw.HttpMethod.DELETE, "/me/widget"),
         ):
             api.add_routes(path=path, methods=[method], integration=integration)
+        # The widget (Scriptable) can't sign in: the handler checks its own revocable token.
+        api.add_routes(
+            path="/widget", methods=[apigw.HttpMethod.GET], integration=integration, authorizer=apigw.HttpNoneAuthorizer()
+        )
+        NagSuppressions.add_resource_suppressions_by_path(
+            Stack.of(self),
+            f"{api.node.path}/GET--widget/Resource",
+            [NagPackSuppression(id="AwsSolutions-APIG4", reason="Widget route: the handler checks a hashed, revocable token")],
+        )
         access_logs = logs.LogGroup(self, "ApiAccessLogs", retention=logs.RetentionDays.TWO_WEEKS)
         stage = apigw.HttpStage(
             self,

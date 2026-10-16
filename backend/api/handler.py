@@ -1,8 +1,11 @@
 """HTTP API Lambda: the signed-in user's profile, ratings and matches."""
 
+import hashlib
 import json
 import os
 import re
+import secrets
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -20,6 +23,8 @@ MATCH_ID = re.compile(r"^(wtn|local):[\w.-]{1,80}$")
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])  # pyright: ignore[reportAttributeAccessIssue]
+    if event.get("routeKey") == "GET /widget":  # the only route without sign-in: a revocable token instead
+        return _widget(table, (event.get("headers") or {}).get("x-widget-token", ""))
     try:
         sub = event["requestContext"]["authorizer"]["jwt"]["claims"]["sub"]
     except KeyError:
@@ -36,6 +41,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _json(200, {"upcoming": [_public(i) for i in _items(table, user, "UPCOMING#")]})
     if route in ("GET /me/push", "PUT /me/push", "DELETE /me/push", "POST /me/push/test"):
         return _push(table, user, route, event)
+    if route in ("GET /me/widget", "POST /me/widget", "DELETE /me/widget"):
+        return _widget_token(table, user, route)
     if route == "PUT /me/ratings":
         return _put_ratings(table, user, event.get("body"))
     if route == "PUT /me/calendar":
@@ -194,6 +201,60 @@ def _push(table: Any, user: str, route: str, event: dict[str, Any]) -> dict[str,
             ExpressionAttributeValues={":z": zone},
         )
     return _json(200, {"devices": len(devices(table, user))})
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _widget_token(table: Any, user: str, route: str) -> dict[str, Any]:
+    """Home Screen widget token: status (GET), make or replace (POST, shown once), turn off (DELETE)."""
+    key = {"PK": f"USER#{user}", "SK": "PROFILE"}
+    old = table.get_item(Key=key).get("Item", {}).get("widgetHash")
+    if route == "GET /me/widget":
+        return _json(200, {"enabled": bool(old)})
+    if old:
+        table.delete_item(Key={"PK": f"WIDGET#{old}", "SK": "TOKEN"})
+    if route == "DELETE /me/widget":
+        table.update_item(Key=key, UpdateExpression="REMOVE widgetHash")
+        return _json(200, {"enabled": False})
+    token = secrets.token_urlsafe(32)
+    digest = _hash(token)
+    table.put_item(Item={"PK": f"WIDGET#{digest}", "SK": "TOKEN", "userId": user})
+    table.update_item(Key=key, UpdateExpression="SET widgetHash = :h", ExpressionAttributeValues={":h": digest})
+    return _json(200, {"enabled": True, "token": token})
+
+
+def _instant(value: str) -> datetime:
+    moment = datetime.fromisoformat(value)
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
+def _widget(table: Any, token: str) -> dict[str, Any]:
+    """WTN doubles and the next match, for the widget; nothing else leaves through the token."""
+    item = table.get_item(Key={"PK": f"WIDGET#{_hash(token)}", "SK": "TOKEN"}).get("Item") if token else None
+    if not item:
+        return _json(401, {"error": "unauthorized"})
+    user = str(item["userId"])
+    ratings = sorted(_items(table, user, "RATING#WTN#DOUBLE#"), key=lambda r: r["SK"])
+    wtn = None
+    if ratings:
+        last = ratings[-1]
+        better = round(float(ratings[-2]["value"]) - float(last["value"]), 2) if len(ratings) > 1 else None  # lower is better
+        wtn = {
+            "value": last["value"],
+            "better": better,
+            "confidence": last.get("confidence"),
+            "date": last["SK"].rsplit("#", 1)[1],
+            "trend": [r["value"] for r in ratings[-24:]],
+        }
+    now = datetime.now(UTC)
+    upcoming = [
+        i for i in _items(table, user, "UPCOMING#") if _instant(i.get("end") or i["start"]) >= now
+    ]  # all-day: until its end
+    nxt = min(upcoming, key=lambda i: _instant(i["start"]), default=None)
+    next_match = {k: nxt[k] for k in ("title", "start", "location", "allDay")} if nxt else None
+    return _json(200, {"wtn": wtn, "next": next_match})
 
 
 def _public(item: dict[str, Any]) -> dict[str, Any]:
