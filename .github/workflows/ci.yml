@@ -204,7 +204,7 @@ jobs:
 
   # Decides whether a push to main deploys: anything outside docs, Markdown, tests and CI config
   # (except this workflow, which holds the deploy step). A manual run on main always deploys: merges made by
-  # GITHUB_TOKEN (the auto-merge workflow) don't start a push run, so `gh workflow run ci.yml --ref main` covers them.
+  # GITHUB_TOKEN don't start a push run, so `gh workflow run ci.yml --ref main` covers them.
   changes:
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
