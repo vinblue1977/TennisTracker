@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { latest, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
+import { formatTime, latest, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -70,5 +70,13 @@ describe('relativeDay', () => {
     expect(relativeDay(new Date(2026, 9, 16, 21, 0).toISOString(), now)).toBe('Today');
     expect(relativeDay(new Date(2026, 9, 17, 9, 0).toISOString(), now)).toBe('Tomorrow');
     expect(relativeDay(new Date(2026, 9, 20, 9, 0).toISOString(), now)).toBe('');
+  });
+});
+
+describe('formatTime', () => {
+  it('uses 12-hour time like 9:00pm', () => {
+    expect(formatTime(new Date(2026, 9, 16, 21, 0))).toBe('9:00pm');
+    expect(formatTime(new Date(2026, 9, 16, 0, 5))).toBe('12:05am');
+    expect(formatTime(new Date(2026, 9, 16, 12, 30))).toBe('12:30pm');
   });
 });

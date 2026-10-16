@@ -96,7 +96,7 @@ export function Notifications({ vapidKey }: { vapidKey: string }) {
     <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <span class="eyebrow">Notifications</span>
       <span class="muted" style={{ fontSize: '14px' }}>
-        Match reminders (20:00 the evening before, 2 hours before) and WTN changes.
+        Match reminders (8:00pm the evening before, 2 hours before) and WTN changes.
       </span>
       {body}
       <span class="muted" role="status">
