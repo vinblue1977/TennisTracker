@@ -14,7 +14,10 @@ from infra.stack import TennisTrackerStack
 REPO = "test-owner@1/test-repo@2"
 # The same feature flags as a real synth, so tests render the template the way a deploy does.
 CDK_CONTEXT = {k: v for k, v in json.loads(Path("cdk.json").read_text())["context"].items() if k.startswith("@")}
-CDK_CONTEXT["siteDir"] = "tests/fixtures/site"  # a stand-in app, so tests don't need a frontend build
+CDK_CONTEXT["siteDir"] = "tests/fixtures/site"
+CDK_CONTEXT["layerDir"] = (
+    "tests/fixtures/layer"  # stand-in: tests don't need the built layer  # a stand-in app, so tests don't need a frontend build
+)
 
 
 def _stack(context: dict | None = None, account: str | None = "123456789012") -> TennisTrackerStack:
@@ -123,7 +126,7 @@ def test_rejects_malformed_repo() -> None:
 def test_api_routes_require_sign_in_and_site_is_private() -> None:
     template = _template()
     routes = template.find_resources("AWS::ApiGatewayV2::Route")
-    assert len(routes) == 6 and all(r["Properties"]["AuthorizationType"] == "JWT" for r in routes.values())
+    assert len(routes) == 10 and all(r["Properties"]["AuthorizationType"] == "JWT" for r in routes.values())
     template.has_resource_properties(
         "AWS::S3::Bucket",
         {
@@ -152,3 +155,13 @@ def test_sign_in_page_is_dark() -> None:
             ),
         },
     )
+
+
+def test_reminders_run_every_15_minutes_and_lambdas_can_only_read_the_signing_key() -> None:
+    template = _template()
+    template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "rate(15 minutes)"})
+    template.has_resource_properties("AWS::Lambda::Function", {"Handler": "push.reminders.handler", "Layers": Match.any_value()})
+    policies = template.find_resources("AWS::IAM::Policy")
+    statements = [s for p in policies.values() for s in p["Properties"]["PolicyDocument"]["Statement"]]
+    ssm = [s for s in statements if "ssm" in json.dumps(s["Action"])]
+    assert ssm and all(s["Action"] == "ssm:GetParameter" and "vapid-private-key" in json.dumps(s["Resource"]) for s in ssm)

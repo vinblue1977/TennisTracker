@@ -36,7 +36,7 @@ async function loadData(): Promise<Data | null> {
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
   const [profile, ratings, matches, upcoming] = await Promise.all([api.profile(), api.ratings(), api.matches(), api.upcoming()]);
-  return { profile, ratings, matches, upcoming };
+  return { profile, ratings, matches, upcoming, vapidKey: config.vapidPublicKey ?? '' };
 }
 
 export function App() {

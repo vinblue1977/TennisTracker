@@ -29,6 +29,10 @@ export const api = {
   matches: () => call<{ matches: Match[] }>('/me/matches').then((r) => r.matches),
   upcoming: () => call<{ upcoming: Upcoming[] }>('/me/upcoming').then((r) => r.upcoming),
   saveCalendar: (url: string) => call<{ connected: boolean }>('/me/calendar', { method: 'PUT', body: JSON.stringify({ url }) }),
+  pushStatus: (endpoint: string) => call<{ devices: number; thisDevice: boolean }>(`/me/push?endpoint=${encodeURIComponent(endpoint)}`),
+  pushOn: (subscription: PushSubscriptionJSON, timeZone: string) => call<{ devices: number }>('/me/push', { method: 'PUT', body: JSON.stringify({ ...subscription, timeZone }) }),
+  pushOff: (endpoint: string) => call<{ devices: number }>('/me/push', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  pushTest: (endpoint: string) => call<{ sent: number }>('/me/push/test', { method: 'POST', body: JSON.stringify({ endpoint }) }),
   saveExtras: (id: string, note: string, starred: boolean) =>
     call<{ note: string; starred: boolean }>(`/me/matches/${encodeURIComponent(id)}/extras`, {
       method: 'PUT',

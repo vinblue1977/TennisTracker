@@ -1,6 +1,7 @@
 """The Tennis Tracker stack: data table, daily WTN sync, sign-in, API, hosting and the GitHub deploy role."""
 
 import re
+from pathlib import Path
 
 from aws_cdk import CfnOutput, DefaultStackSynthesizer, Duration, RemovalPolicy, Stack
 from aws_cdk import aws_cloudwatch_actions as cw_actions
@@ -15,6 +16,7 @@ from aws_cdk import aws_sns_subscriptions as subs
 from cdk_nag import NagPackSuppression, NagSuppressions, RegexAppliesTo
 from constructs import Construct
 
+from infra.push import VAPID_PARAM, grant_vapid
 from infra.web import Web
 
 GITHUB = "token.actions.githubusercontent.com"
@@ -38,13 +40,29 @@ class TennisTrackerStack(Stack):
         CfnOutput(self, "TableName", value=self.table.table_name)
 
         topic = self._alert_topic()
+        # Locked runtime dependencies (layer/requirements.txt), built by `make layer`.
+        layer_dir = self.node.try_get_context("layerDir") or "build/layer"
+        if not Path(layer_dir).is_dir():
+            raise FileNotFoundError(f"Lambda layer not found at {layer_dir}; run `make layer` first")
+        self.layer = lambda_.LayerVersion(
+            self,
+            "Deps",
+            code=lambda_.Code.from_asset(layer_dir),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_14],
+            compatible_architectures=[lambda_.Architecture.ARM_64],
+            description="Locked runtime dependencies (layer/requirements.txt)",
+        )
+        self.push_env = {"VAPID_KEY_PARAM": VAPID_PARAM, "VAPID_SUBJECT": "https://github.com/vinblue1977/TennisTracker"}
         # 11:00 UTC = 06:00 Chicago in summer (05:00 in winter).
         self._scheduled("WtnSync", "wtn_sync.handler.handler", events.Schedule.cron(minute="0", hour="11"), topic, "WTN sync")
         calendar = self._scheduled(
             "CalendarSync", "calendar_sync.handler.handler", events.Schedule.rate(Duration.hours(1)), topic, "Calendar sync"
         )
+        self._scheduled(
+            "Reminders", "push.reminders.handler", events.Schedule.rate(Duration.minutes(15)), topic, "Match reminders"
+        )
         site_dir = self.node.try_get_context("siteDir") or "frontend/dist"
-        Web(self, "Web", table=self.table, site_dir=site_dir, calendar_fn=calendar)  # pyright: ignore[reportArgumentType]
+        Web(self, "Web", table=self.table, site_dir=site_dir, calendar_fn=calendar, layer=self.layer, push_env=self.push_env)  # pyright: ignore[reportArgumentType]
 
         github_repo: str = self.node.try_get_context("githubRepo") or ""
         if github_repo:
@@ -72,10 +90,12 @@ class TennisTrackerStack(Stack):
             code=lambda_.Code.from_asset("backend", exclude=["**/__pycache__"]),
             memory_size=256,
             timeout=Duration.seconds(60),
-            environment={"TABLE_NAME": self.table.table_name, "ALERT_TOPIC_ARN": topic.topic_arn},
+            environment={"TABLE_NAME": self.table.table_name, "ALERT_TOPIC_ARN": topic.topic_arn, **self.push_env},
+            layers=[self.layer],  # pyright: ignore[reportArgumentType]
             log_group=logs.LogGroup(self, f"{name}Logs", retention=logs.RetentionDays.TWO_WEEKS),
         )
         self.table.grant_read_write_data(fn)
+        grant_vapid(fn)
         topic.grant_publish(fn)
         target = targets.LambdaFunction(fn)  # pyright: ignore[reportArgumentType]
         events.Rule(self, f"{name}Schedule", schedule=schedule, targets=[target])  # pyright: ignore[reportArgumentType]

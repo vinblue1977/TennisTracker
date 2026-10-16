@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 
 import { addPasskeyUrl, currentEmail, logout } from '../auth';
+import { Notifications } from '../components/Notifications';
 import type { Data } from '../types';
 
 export function Me({ data, onCalendar }: { data: Data; onCalendar: (url: string) => Promise<void> }) {
@@ -37,6 +38,7 @@ export function Me({ data, onCalendar }: { data: Data; onCalendar: (url: string)
           </span>
         </div>
       </section>
+      <Notifications vapidKey={data.vapidKey ?? ''} />
       <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <span class="eyebrow">Tennis calendar</span>
         {calendar?.connected ? (

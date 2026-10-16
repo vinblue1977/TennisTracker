@@ -5,11 +5,14 @@ import os
 import re
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import boto3
 from boto3.dynamodb.conditions import Key
 
 from calendar_sync.fetch import CalendarError, normalize
+from push.notify import device_key, devices, notify
+from push.webpush import allowed_endpoint
 
 MAX_NOTE = 2000
 MATCH_ID = re.compile(r"^(wtn|local):[\w.-]{1,80}$")
@@ -31,6 +34,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _json(200, {"matches": _matches(table, user)})
     if route == "GET /me/upcoming":
         return _json(200, {"upcoming": [_public(i) for i in _items(table, user, "UPCOMING#")]})
+    if route in ("GET /me/push", "PUT /me/push", "DELETE /me/push", "POST /me/push/test"):
+        return _push(table, user, route, event)
     if route == "PUT /me/calendar":
         return _put_calendar(table, user, event.get("body"))
     if route == "PUT /me/matches/{id}/extras":
@@ -115,6 +120,48 @@ def _put_calendar(table: Any, user: str, body: str | None) -> dict[str, Any]:
         for item in _items(table, user, "UPCOMING#"):
             table.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
     return _json(200, {"connected": bool(url)})
+
+
+def _push(table: Any, user: str, route: str, event: dict[str, Any]) -> dict[str, Any]:
+    """Notifications on this device: status (GET), turn on (PUT), turn off (DELETE), test (POST)."""
+    if route == "GET /me/push":
+        endpoint = (event.get("queryStringParameters") or {}).get("endpoint", "")
+        mine = devices(table, user)
+        return _json(200, {"devices": len(mine), "thisDevice": any(d["SK"] == device_key(endpoint) for d in mine)})
+    try:
+        data = json.loads(event.get("body") or "{}")
+        if not isinstance(data, dict):
+            raise ValueError
+    except ValueError:
+        return _json(400, {"error": "body must be a JSON object"})
+    endpoint = data.get("endpoint")
+    if not isinstance(endpoint, str) or len(endpoint) > 1000 or not allowed_endpoint(endpoint):
+        return _json(400, {"error": "not a known push service"})
+    key = {"PK": f"USER#{user}", "SK": device_key(endpoint)}
+    if route == "DELETE /me/push":
+        table.delete_item(Key=key)
+        return _json(200, {"devices": len(devices(table, user))})
+    if route == "POST /me/push/test":
+        if "Item" not in table.get_item(Key=key):
+            return _json(404, {"error": "notifications are not on for this device"})
+        return _json(200, {"sent": notify(table, user, "Tennis", "Notifications work on this device.", "/#/me")})
+    keys = data.get("keys")
+    if not (isinstance(keys, dict) and all(isinstance(keys.get(k), str) and 0 < len(keys[k]) <= 200 for k in ("p256dh", "auth"))):
+        return _json(400, {"error": "subscription keys missing"})
+    zone = data.get("timeZone")
+    try:
+        ZoneInfo(zone) if isinstance(zone, str) and len(zone) <= 64 else None
+    except ZoneInfoNotFoundError, ValueError:
+        zone = None
+    table.put_item(Item={**key, "subscription": {"endpoint": endpoint, "keys": {"p256dh": keys["p256dh"], "auth": keys["auth"]}}})
+    if isinstance(zone, str):
+        table.update_item(
+            Key={"PK": f"USER#{user}", "SK": "PROFILE"},
+            UpdateExpression="SET #tz = :z",  # timeZone is a DynamoDB reserved word
+            ExpressionAttributeNames={"#tz": "timeZone"},
+            ExpressionAttributeValues={":z": zone},
+        )
+    return _json(200, {"devices": len(devices(table, user))})
 
 
 def _public(item: dict[str, Any]) -> dict[str, Any]:

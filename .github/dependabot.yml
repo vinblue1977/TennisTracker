@@ -31,6 +31,19 @@ updates:
       # cdk-nag 3 replaces the suppression API (experimental, no grouped acknowledgments yet).
       - dependency-name: cdk-nag
         versions: [">=3.0.0"]
+  # The Lambda layer: requirements.in holds the ranges; Dependabot regenerates the hashed lockfile.
+  - package-ecosystem: pip
+    directory: /layer
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      layer:
+        patterns: ["*"]
   # The CDK CLI that deploys and pyright (package.json).
   - package-ecosystem: npm
     directory: /

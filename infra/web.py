@@ -18,12 +18,22 @@ from aws_cdk import aws_s3_deployment as s3deploy
 from cdk_nag import NagPackSuppression, NagSuppressions, RegexAppliesTo
 from constructs import Construct
 
+from infra.push import grant_vapid
+
 DEV_ORIGIN = "http://localhost:5173"
 
 
 class Web(Construct):
     def __init__(
-        self, scope: Construct, construct_id: str, *, table: dynamodb.ITableV2, site_dir: str, calendar_fn: lambda_.IFunction
+        self,
+        scope: Construct,
+        construct_id: str,
+        *,
+        table: dynamodb.ITableV2,
+        site_dir: str,
+        calendar_fn: lambda_.IFunction,
+        layer: lambda_.ILayerVersion,
+        push_env: dict[str, str],
     ) -> None:
         super().__init__(scope, construct_id)
         region = Stack.of(self).region
@@ -164,10 +174,12 @@ class Web(Construct):
             code=lambda_.Code.from_asset("backend", exclude=["**/__pycache__"]),
             memory_size=256,
             timeout=Duration.seconds(10),
-            environment={"TABLE_NAME": table.table_name, "CALENDAR_FUNCTION": calendar_fn.function_name},
+            environment={"TABLE_NAME": table.table_name, "CALENDAR_FUNCTION": calendar_fn.function_name, **push_env},
+            layers=[layer],
             log_group=logs.LogGroup(self, "ApiLogs", retention=logs.RetentionDays.TWO_WEEKS),
         )
         table.grant_read_write_data(fn)
+        grant_vapid(fn)  # "send a test"
         calendar_fn.grant_invoke(fn)  # sync right after the calendar link is saved
         api = apigw.HttpApi(
             self,
@@ -176,7 +188,12 @@ class Web(Construct):
             default_authorizer=authorizers.HttpUserPoolAuthorizer("Cognito", pool, user_pool_clients=[client]),  # pyright: ignore[reportArgumentType]
             cors_preflight=apigw.CorsPreflightOptions(
                 allow_origins=[site_url, DEV_ORIGIN],
-                allow_methods=[apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.PUT],
+                allow_methods=[
+                    apigw.CorsHttpMethod.GET,
+                    apigw.CorsHttpMethod.PUT,
+                    apigw.CorsHttpMethod.POST,
+                    apigw.CorsHttpMethod.DELETE,
+                ],
                 allow_headers=["Authorization", "Content-Type"],
                 max_age=Duration.hours(1),
             ),
@@ -189,6 +206,10 @@ class Web(Construct):
             (apigw.HttpMethod.PUT, "/me/matches/{id}/extras"),
             (apigw.HttpMethod.GET, "/me/upcoming"),
             (apigw.HttpMethod.PUT, "/me/calendar"),
+            (apigw.HttpMethod.GET, "/me/push"),
+            (apigw.HttpMethod.PUT, "/me/push"),
+            (apigw.HttpMethod.DELETE, "/me/push"),
+            (apigw.HttpMethod.POST, "/me/push/test"),
         ):
             api.add_routes(path=path, methods=[method], integration=integration)
         access_logs = logs.LogGroup(self, "ApiAccessLogs", retention=logs.RetentionDays.TWO_WEEKS)
@@ -216,7 +237,13 @@ class Web(Construct):
                 s3deploy.Source.asset(site_dir),
                 s3deploy.Source.json_data(
                     "config.json",
-                    {"apiUrl": api_url, "authUrl": auth_url, "clientId": client.user_pool_client_id, "region": region},
+                    {
+                        "apiUrl": api_url,
+                        "authUrl": auth_url,
+                        "clientId": client.user_pool_client_id,
+                        "region": region,
+                        "vapidPublicKey": Stack.of(self).node.try_get_context("vapidPublicKey") or "",
+                    },
                 ),
             ],
             distribution=distribution,
