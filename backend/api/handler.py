@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from api import trophies
 from calendar_sync.fetch import CalendarError, normalize
 from push.notify import device_key, devices, notify
 from push.webpush import allowed_endpoint
@@ -43,6 +44,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _push(table, user, route, event)
     if route in ("GET /me/widget", "POST /me/widget", "DELETE /me/widget"):
         return _widget_token(table, user, route)
+    if "/me/trophies" in route:
+        return _trophies(table, user, route, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
     if route == "PUT /me/ratings":
         return _put_ratings(table, user, event.get("body"))
     if route == "PUT /me/calendar":
@@ -110,6 +113,46 @@ def _put_extras(table: Any, user: str, match_id: str, body: str | None) -> dict[
         return _json(404, {"error": "no such match"})
     table.put_item(Item={"PK": f"USER#{user}", "SK": f"EXTRA#{match_id}", "note": note, "starred": starred})
     return _json(200, {"id": match_id, "note": note, "starred": starred})
+
+
+def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | None) -> dict[str, Any]:
+    mine = _items(table, user, "TROPHY#")
+    if route == "GET /me/trophies":
+        dismissed = {i["SK"].removeprefix("DISMISSED#") for i in _items(table, user, "DISMISSED#")}
+        found = trophies.suggestions(_items(table, user, "MATCH#"), mine, dismissed)
+        shelf = sorted((trophies.public(i) for i in mine), key=lambda t: t["date"], reverse=True)
+        return _json(200, {"trophies": shelf, "suggestions": found})
+    if route == "POST /me/trophies/dismiss":
+        try:
+            suggestion = json.loads(body or "{}").get("id")
+        except ValueError, AttributeError:
+            suggestion = None
+        if not isinstance(suggestion, str) or not 0 < len(suggestion) <= 200:
+            return _json(400, {"error": 'body must be {"id": "<suggestion id>"}'})
+        table.put_item(Item=trophies.dismissal(user, suggestion))
+        return _json(200, {"dismissed": True})
+    old = next((i for i in mine if i["SK"].endswith(f"#{trophy_id}")), None) if trophy_id else None
+    if route != "POST /me/trophies" and not (old and trophies.TROPHY_ID.match(trophy_id)):
+        return _json(404, {"error": "no such trophy"})
+    if old and route == "DELETE /me/trophies/{id}":
+        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
+        if old.get("suggestion"):  # stay gone rather than come back as a suggestion
+            table.put_item(Item=trophies.dismissal(user, old["suggestion"]))
+        return _json(200, {"id": trophy_id})
+    data = trophies.parse(body)
+    if isinstance(data, str):
+        return _json(400, {"error": data})
+    if old:
+        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})  # the date is part of the key
+        data.setdefault("suggestion", old.get("suggestion"))
+        data = {k: v for k, v in data.items() if v is not None}
+    elif len(mine) >= trophies.MAX_TROPHIES:
+        return _json(400, {"error": f"up to {trophies.MAX_TROPHIES} trophies"})
+    else:
+        trophy_id = trophies.new_id()
+    item = {**trophies.key(user, trophy_id, data["date"]), **data}
+    table.put_item(Item=item)
+    return _json(200, trophies.public(item))
 
 
 def _put_ratings(table: Any, user: str, body: str | None) -> dict[str, Any]:

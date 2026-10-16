@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 
 import { addPasskeyUrl, currentEmail, logout } from '../auth';
+import { Trophies } from '../components/Trophies';
 import { Notifications } from '../components/Notifications';
 import { Widget } from '../components/Widget';
 import { formatTime } from '../data';
@@ -49,7 +50,14 @@ function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Rat
   );
 }
 
-export function Me({ data, onCalendar, onRatings }: { data: Data; onCalendar: (url: string) => Promise<void>; onRatings: (r: Ratings) => Promise<void> }) {
+type MeProps = {
+  data: Data;
+  onCalendar: (url: string) => Promise<void>;
+  onRatings: (r: Ratings) => Promise<void>;
+  onTrophies: (change: () => Promise<unknown>) => Promise<void>;
+};
+
+export function Me({ data, onCalendar, onRatings, onTrophies }: MeProps) {
   const sync = data.profile.sync;
   const calendar = data.profile.calendar;
   const [link, setLink] = useState('');
@@ -85,6 +93,7 @@ export function Me({ data, onCalendar, onRatings }: { data: Data; onCalendar: (u
         </div>
       </section>
       <Manual profile={data.profile} onSave={onRatings} />
+      <Trophies data={data.trophies} onChange={onTrophies} />
       <Notifications vapidKey={data.vapidKey ?? ''} />
       <Widget />
       <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

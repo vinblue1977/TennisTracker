@@ -18,6 +18,13 @@ const m = (date: string, event: string, won: boolean | null, score: string, part
 });
 
 export const mockData: Data = {
+  trophies: {
+    trophies: [
+      { id: 't1', event: 'City League Final', date: '2025-09-14', result: 'winner', note: '6-4 6-3' },
+      { id: 't2', event: 'Club Championship', date: '2025-06-08', result: 'finalist', note: '' },
+    ],
+    suggestions: [{ id: '2026#Spring Doubles Open', event: 'Spring Doubles Open', date: '2026-04-12', matches: 3, partner: 'Sam Sample' }],
+  },
   upcoming: [
     { SK: 'UPCOMING#2026-10-17T02:00Z#a', title: 'City Doubles Final', location: 'Test Club, Court 3', start: '2026-10-17T02:00:00+00:00', end: '2026-10-17T04:00:00+00:00', allDay: false },
     { SK: 'UPCOMING#2026-10-17T14:00Z#b', title: 'Evening League match', location: 'Sample Park', start: '2026-10-17T14:00:00+00:00', end: '2026-10-17T15:30:00+00:00', allDay: false },

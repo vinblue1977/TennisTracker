@@ -1,6 +1,8 @@
 import { getAccessToken } from './auth';
 import type { Config } from './config';
-import type { Match, Profile, Rating, Upcoming } from './types';
+import type { Data, Match, Profile, Rating, Trophy, Upcoming } from './types';
+
+export type TrophyInput = Omit<Trophy, 'id'> & { suggestion?: string };
 
 let base = '';
 
@@ -30,6 +32,11 @@ export const api = {
   ratings: () => call<{ ratings: Rating[] }>('/me/ratings').then((r) => r.ratings),
   matches: () => call<{ matches: Match[] }>('/me/matches').then((r) => r.matches),
   upcoming: () => call<{ upcoming: Upcoming[] }>('/me/upcoming').then((r) => r.upcoming),
+  trophies: () => call<Data['trophies']>('/me/trophies'),
+  addTrophy: (t: TrophyInput) => call<Trophy>('/me/trophies', { method: 'POST', body: JSON.stringify(t) }),
+  editTrophy: (id: string, t: TrophyInput) => call<Trophy>(`/me/trophies/${id}`, { method: 'PUT', body: JSON.stringify(t) }),
+  deleteTrophy: (id: string) => call<{ id: string }>(`/me/trophies/${id}`, { method: 'DELETE' }),
+  dismissSuggestion: (id: string) => call<{ dismissed: boolean }>('/me/trophies/dismiss', { method: 'POST', body: JSON.stringify({ id }) }),
   saveRatings: (ratings: { utr?: number | null; ntrp?: number | null }) =>
     call<{ utr: number | null; ntrp: number | null }>('/me/ratings', { method: 'PUT', body: JSON.stringify(ratings) }),
   saveCalendar: (url: string) => call<{ connected: boolean }>('/me/calendar', { method: 'PUT', body: JSON.stringify({ url }) }),
