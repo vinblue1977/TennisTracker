@@ -37,10 +37,17 @@ export function MatchRow({ m }: { m: Match }) {
 
 export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '' }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string }) {
   const [query, setQuery] = useState('');
+  const [event, setEvent] = useState('');
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
+  const events = new Map<string, { count: number; latest: string }>();
+  for (const m of data.matches) {
+    const e = events.get(m.event);
+    events.set(m.event, { count: (e?.count ?? 0) + 1, latest: e && e.latest > matchDate(m) ? e.latest : matchDate(m) });
+  }
+  const tournaments = [...events].sort((a, b) => b[1].latest.localeCompare(a[1].latest));
   const shown = data.matches.filter(
-    (m) => (!upsetsOnly || m.upsetGap !== null) && (!person || (m.kind === 'DOUBLE' && m.won !== null && [...m.partners, ...m.opponents].some((p) => shortName(p.name) === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
+    (m) => (!upsetsOnly || m.upsetGap !== null) && (!event || m.event === event) && (!person || (m.kind === 'DOUBLE' && m.won !== null && [...m.partners, ...m.opponents].some((p) => shortName(p.name) === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
   );
   let year = '';
 
@@ -75,7 +82,18 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
         <span class="sr-only">Search</span>
         <input type="search" placeholder="Search partner, opponent, event" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
       </label>
-      {shown.length === 0 && <p class="muted">{upsetsOnly && !q ? 'No upset wins yet.' : `No matches${q ? ' match your search' : ' yet'}.`}</p>}
+      <label>
+        <span class="sr-only">Tournament</span>
+        <select value={event} onChange={(e) => setEvent(e.currentTarget.value)}>
+          <option value="">All tournaments</option>
+          {tournaments.map(([name, t]) => (
+            <option value={name}>
+              {name} ({t.count})
+            </option>
+          ))}
+        </select>
+      </label>
+      {shown.length === 0 && <p class="muted">{upsetsOnly && !q && !event ? 'No upset wins yet.' : `No matches${q || event ? ' match your filter' : ' yet'}.`}</p>}
       {shown.map((m) => {
         const y = matchDate(m).slice(0, 4);
         const header = y !== year ? <h2 class="year">{(year = y)}</h2> : null;
