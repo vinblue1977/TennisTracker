@@ -16,7 +16,7 @@ from boto3.dynamodb.conditions import Key
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
-from api import photos, trophies
+from api import local_matches, photos, trophies
 from calendar_sync.fetch import CalendarError, normalize
 from push.notify import device_key, devices, notify
 from push.webpush import allowed_endpoint
@@ -55,6 +55,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _put_ratings(table, user, event.get("body"))
     if route == "PUT /me/calendar":
         return _put_calendar(table, user, event.get("body"))
+    if route in ("POST /me/matches", "PUT /me/matches/{id}", "DELETE /me/matches/{id}"):
+        return _local_match(table, user, route, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
     if route == "PUT /me/matches/{id}/extras":
         return _put_extras(table, user, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
     return _json(404, {"error": "not found"})
@@ -118,6 +120,31 @@ def _put_extras(table: Any, user: str, match_id: str, body: str | None) -> dict[
         return _json(404, {"error": "no such match"})
     table.put_item(Item={"PK": f"USER#{user}", "SK": f"EXTRA#{match_id}", "note": note, "starred": starred})
     return _json(200, {"id": match_id, "note": note, "starred": starred})
+
+
+def _local_match(table: Any, user: str, route: str, match_id: str, body: str | None) -> dict[str, Any]:
+    old = None
+    if route != "POST /me/matches":
+        old = (
+            next((i for i in _items(table, user, "MATCH#") if i["SK"].endswith(f"#{match_id}")), None)
+            if local_matches.LOCAL_ID.match(match_id)
+            else None
+        )
+        if not old:
+            return _json(404, {"error": "no such logged match"})  # synced matches can't be changed
+    if route == "DELETE /me/matches/{id}" and old:
+        _delete_photos(table, user, [i for i in _items(table, user, "PHOTO#") if photos.owner_of(i) == f"match:{match_id}"])
+        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
+        table.delete_item(Key={"PK": old["PK"], "SK": f"EXTRA#{match_id}"})
+        return _json(200, {"id": match_id})
+    data = local_matches.parse(body)
+    if isinstance(data, str):
+        return _json(400, {"error": data})
+    match_id = match_id if old else local_matches.new_id()
+    if old:  # the date is part of the key, so a new date moves the item
+        table.delete_item(Key={"PK": old["PK"], "SK": old["SK"]})
+    table.put_item(Item=local_matches.item(user, match_id, data))
+    return _json(200, {"id": match_id})
 
 
 def _trophies(table: Any, user: str, route: str, trophy_id: str, body: str | None) -> dict[str, Any]:

@@ -2,6 +2,14 @@ import { getAccessToken } from './auth';
 import type { Config } from './config';
 import type { Data, Match, Photo, Profile, Rating, Trophy, Upcoming } from './types';
 
+export interface MatchInput {
+  event: string;
+  date: string;
+  partner: string;
+  opponents: string[];
+  score: string;
+  won: boolean | null;
+}
 export type TrophyInput = Omit<Trophy, 'id'> & { suggestion?: string };
 
 let base = '';
@@ -54,6 +62,9 @@ export const api = {
   widgetStatus: () => call<{ enabled: boolean }>('/me/widget'),
   widgetNew: () => call<{ enabled: boolean; token: string }>('/me/widget', { method: 'POST' }),
   widgetOff: () => call<{ enabled: boolean }>('/me/widget', { method: 'DELETE' }),
+  addMatch: (m: MatchInput) => call<{ id: string }>('/me/matches', { method: 'POST', body: JSON.stringify(m) }),
+  editMatch: (id: string, m: MatchInput) => call<{ id: string }>(`/me/matches/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(m) }),
+  deleteMatch: (id: string) => call<{ id: string }>(`/me/matches/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   saveExtras: (id: string, note: string, starred: boolean) =>
     call<{ note: string; starred: boolean }>(`/me/matches/${encodeURIComponent(id)}/extras`, {
       method: 'PUT',

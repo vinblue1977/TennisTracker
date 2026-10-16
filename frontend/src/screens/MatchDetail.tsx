@@ -18,6 +18,8 @@ const writeDraft = (id: string, text: string | null) => {
 };
 
 import { formatDate, matchDate, ratingHistory, shortName, teamAverage, wtnAfter } from '../data';
+import { api } from '../api';
+import { MatchForm } from '../components/MatchForm';
 import { forOwner } from '../photos';
 import type { Data, Match } from '../types';
 import { PhotoStrip } from '../components/Photos';
@@ -27,12 +29,14 @@ interface Props {
   id: string;
   onSave: (id: string, note: string, starred: boolean) => Promise<void>;
   onPhotos: (change?: () => Promise<unknown>) => Promise<void>;
+  onMatches: <T>(change: () => Promise<T>) => Promise<T>;
 }
 
-export function MatchDetail({ data, id, onSave, onPhotos }: Props) {
+export function MatchDetail({ data, id, onSave, onPhotos, onMatches }: Props) {
   const m = data.matches.find((x) => x.id === id);
   const [note, setNote] = useState(readDraft(id) ?? m?.note ?? ''); // an unsaved draft survives an app reload
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [editing, setEditing] = useState(false);
   if (!m) {
     return (
       <main class="screen">
@@ -54,10 +58,35 @@ export function MatchDetail({ data, id, onSave, onPhotos }: Props) {
     }
   };
 
+  if (editing) {
+    return (
+      <main class="screen">
+        <h1 class="title">Edit match</h1>
+        <MatchForm
+          initial={{ event: m.event, date: matchDate(m), partner: m.partners[0]?.name ?? '', opponents: m.opponents.map((p) => p.name), score: m.score, won: m.won }}
+          onCancel={() => setEditing(false)}
+          onSave={async (input) => {
+            await onMatches(() => api.editMatch(m.id, input));
+            setEditing(false);
+          }}
+          onDelete={async () => {
+            await onMatches(() => api.deleteMatch(m.id));
+            location.hash = '#/matches';
+          }}
+        />
+      </main>
+    );
+  }
+
   return (
     <main class="screen">
       <div class="row" style={{ justifyContent: 'space-between' }}>
         <a class="back" href="#/matches">‹ Matches</a>
+        {m.id.startsWith('local:') && (
+          <button class="button quiet" type="button" style={{ minHeight: '36px' }} onClick={() => setEditing(true)}>
+            Edit
+          </button>
+        )}
         <button
           class="icon-button"
           type="button"

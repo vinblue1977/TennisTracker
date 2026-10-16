@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mySideFirst } from './score';
+import { mySideFirst, winnerFromScore } from './score';
 
 describe('mySideFirst', () => {
   it('keeps a win as written', () => {
@@ -19,5 +19,19 @@ describe('mySideFirst', () => {
 
   it('keeps words such as def', () => {
     expect(mySideFirst('6-0 6-0 def', false)).toBe('0-6 0-6 def');
+  });
+});
+
+describe('winnerFromScore', () => {
+  it('reads the result from the sets', () => {
+    expect(winnerFromScore('6-3 6-4')).toBe(true);
+    expect(winnerFromScore('4-6 6-7(5) 6-4')).toBe(false);
+    expect(winnerFromScore('7-6(5) 3-6 1-0')).toBe(true);
+  });
+
+  it('is null when level or unreadable', () => {
+    expect(winnerFromScore('6-3 3-6')).toBeNull();
+    expect(winnerFromScore('')).toBeNull();
+    expect(winnerFromScore('def')).toBeNull();
   });
 });

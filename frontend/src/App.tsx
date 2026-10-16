@@ -114,6 +114,13 @@ export function App() {
     const trophies = await api.trophies().catch(() => null); // the save worked; don't report a failed reload as a failed save
     if (trophies) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, trophies } } : prev));
   };
+  // Logging, editing or deleting a match reloads the list from the server.
+  const onMatches = async <T,>(change: () => Promise<T>): Promise<T> => {
+    const result = await change();
+    const matches = await api.matches().catch(() => null);
+    if (matches) setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, matches } } : prev));
+    return result;
+  };
   // Photo changes reload the list; a failed image calls this with no change to get fresh links (at most once a minute).
   const onPhotos = async (change?: () => Promise<unknown>) => {
     if (isMock()) return;
@@ -125,13 +132,13 @@ export function App() {
   const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const screen = detailId ? (
-    <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} />
+    <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} onMatches={onMatches} />
   ) : withName ? (
     <Matches key={withName} data={data} person={safeDecode(withName)} onPhotos={onPhotos} />
   ) : hash === '#/stats' ? (
     <Stats data={data} />
   ) : hash === '#/matches' ? (
-    <Matches data={data} onPhotos={onPhotos} />
+    <Matches data={data} onPhotos={onPhotos} onMatches={onMatches} />
   ) : hash === '#/upsets' ? (
     <Matches data={data} upsetsOnly onPhotos={onPhotos} />
   ) : hash === '#/upcoming' ? (

@@ -16,3 +16,13 @@ export function mySideFirst(score: string, iWon: boolean): string {
     })
     .join(' ');
 }
+
+/** Your result from a score with your side first: more sets won is a win, fewer a loss, level is null. */
+export function winnerFromScore(score: string): boolean | null {
+  let diff = 0;
+  for (const part of score.trim().split(/\s+/)) {
+    const m = SET.exec(part);
+    if (m) diff += Math.sign(Number(m[1]) - Number(m[2]));
+  }
+  return diff > 0 ? true : diff < 0 ? false : null;
+}
