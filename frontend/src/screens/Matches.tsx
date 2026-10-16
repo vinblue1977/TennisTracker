@@ -35,18 +35,24 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data, upcomingTab = false }: { data: Data; upcomingTab?: boolean }) {
+export function Matches({ data, upcomingTab = false, upsetsOnly = false }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean }) {
   const [query, setQuery] = useState('');
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
   const shown = data.matches.filter(
-    (m) => !q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q)),
+    (m) => (!upsetsOnly || m.upsetGap !== null) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
   );
   let year = '';
 
   return (
     <main class="screen">
-      <h1 class="title">Matches</h1>
+      {upsetsOnly && (
+        <a class="back" href="#/">
+          ‹ Home
+        </a>
+      )}
+      <h1 class="title">{upsetsOnly ? 'Upset wins' : 'Matches'}</h1>
+      {!upsetsOnly && (
       <nav class="segmented" aria-label="Played or upcoming">
         <a href="#/matches" aria-current={upcomingTab ? undefined : 'page'}>
           Played · {data.matches.length}
@@ -55,6 +61,7 @@ export function Matches({ data, upcomingTab = false }: { data: Data; upcomingTab
           Upcoming · {data.upcoming.length}
         </a>
       </nav>
+      )}
       {upcomingTab ? (
         <>
           {data.upcoming.length === 0 && <p class="muted">Nothing coming up. Add matches to your Tennis calendar, and connect it under Me.</p>}
@@ -68,7 +75,7 @@ export function Matches({ data, upcomingTab = false }: { data: Data; upcomingTab
         <span class="sr-only">Search</span>
         <input type="search" placeholder="Search partner, opponent, event" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
       </label>
-      {shown.length === 0 && <p class="muted">No matches{q ? ' match your search' : ' yet'}.</p>}
+      {shown.length === 0 && <p class="muted">{upsetsOnly && !q ? 'No upset wins yet.' : `No matches${q ? ' match your search' : ' yet'}.`}</p>}
       {shown.map((m) => {
         const y = matchDate(m).slice(0, 4);
         const header = y !== year ? <h2 class="year">{(year = y)}</h2> : null;

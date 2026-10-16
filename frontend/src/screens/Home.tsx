@@ -59,17 +59,21 @@ export function Home({ data }: { data: Data }) {
         </section>
       </div>
 
-      {data.upcoming[0] && <UpcomingCard u={data.upcoming[0]} highlight />}
+      {data.upcoming[0] && (
+        <a class="tap" href="#/upcoming">
+          <UpcomingCard u={data.upcoming[0]} highlight />
+        </a>
+      )}
 
       <div class="grid2">
-        <section class="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }} aria-label="Wins and losses">
+        <a class="card tap" href="#/matches" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }} aria-label="Wins and losses, see matches">
           <span class="eyebrow" style={{ alignSelf: 'flex-start' }}>Win–loss</span>
           <Donut wins={wins} losses={losses} />
           <span style={{ fontWeight: 600 }}>
             <span style={{ color: 'var(--win-text)' }}>{wins} W</span> · <span style={{ color: 'var(--loss-text)' }}>{losses} L</span>
           </span>
-        </section>
-        <section class="card" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} aria-label="Upset wins">
+        </a>
+        <a class="card tap" href="#/upsets" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} aria-label="Upset wins, see list">
           <span class="eyebrow">Upset wins</span>
           <span class="num" style={{ fontSize: '40px', color: 'var(--accent)' }}>{upsets.length}</span>
           <span class="muted" style={{ fontSize: '14px' }}>
@@ -77,7 +81,7 @@ export function Home({ data }: { data: Data }) {
               ? `Beat a higher-rated team. Biggest: ${biggest.upsetGap ? `${biggest.upsetGap.toFixed(2)} w/ ` : 'w/ '}${shortName(biggest.partners[0]?.name ?? '')}, ${formatDate(matchDate(biggest), true)}`
               : 'Beat a higher-rated team to get one.'}
           </span>
-        </section>
+        </a>
       </div>
 
       <div class="row" style={{ justifyContent: 'space-between', padding: '4px 4px 0' }}>

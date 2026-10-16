@@ -90,6 +90,8 @@ export function App() {
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} />
   ) : hash === '#/matches' ? (
     <Matches data={data} />
+  ) : hash === '#/upsets' ? (
+    <Matches data={data} upsetsOnly />
   ) : hash === '#/upcoming' ? (
     <Matches data={data} upcomingTab />
   ) : hash === '#/me' ? (
@@ -100,7 +102,7 @@ export function App() {
   return (
     <div class="page">
       {screen}
-      <TabBar active={detailId ? '#/matches' : hash === '#/upcoming' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
+      <TabBar active={detailId ? '#/matches' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
     </div>
   );
 }
