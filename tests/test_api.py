@@ -230,3 +230,60 @@ def test_trophy_date_must_be_canonical_and_double_tap_is_rejected(table) -> None
         assert _add(date=bad)[0] == 400, bad
     assert _add(suggestion="2026#Club Open")[0] == 200
     assert _add(suggestion="2026#Club Open")[0] == 409
+
+
+@pytest.fixture
+def bucket(table, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("PHOTO_BUCKET", "photos")
+    s3 = boto3.client("s3", region_name="us-east-2")
+    s3.create_bucket(Bucket="photos", CreateBucketConfiguration={"LocationConstraint": "us-east-2"})
+    return s3
+
+
+def _photo(s3, owner: str = "match:wtn:m1", upload: bool = True) -> tuple[int, dict]:
+    status, signed = call("POST /me/photos/upload-url", body=json.dumps({"owner": owner}))
+    assert status == 200 and signed["fields"]["Content-Type"] == "image/jpeg" and "photos" in signed["url"]
+    if upload:
+        s3.put_object(Bucket="photos", Key=f"owner/{signed['id']}.jpg", Body=b"jpeg")
+    return call("POST /me/photos", body=json.dumps({"owner": owner, "id": signed["id"]}))
+
+
+def test_photos_add_list_cover_delete(bucket) -> None:
+    first = _photo(bucket)[1]["id"]
+    second = _photo(bucket)[1]["id"]
+    listed = call("GET /me/photos")[1]["photos"]
+    assert {p["id"] for p in listed} == {first, second}
+    assert all(p["owner"] == "match:wtn:m1" and "X-Amz-Signature" in p["url"] for p in listed)
+    assert [p["cover"] for p in listed if p["id"] == first] == [True]  # the first upload is the cover
+    assert call("PUT /me/photos/{id}", match_id=second)[0] == 200
+    assert {p["id"] for p in call("GET /me/photos")[1]["photos"] if p["cover"]} == {second}
+    assert call("DELETE /me/photos/{id}", match_id=first)[0] == 200
+    assert [p["id"] for p in call("GET /me/photos")[1]["photos"]] == [second]
+    assert "Contents" not in bucket.list_objects_v2(Bucket="photos", Prefix=f"owner/{first}")
+    assert call("DELETE /me/photos/{id}", match_id=first)[0] == 404
+
+
+def test_photos_need_an_existing_owner_and_an_uploaded_file(bucket) -> None:
+    assert call("POST /me/photos/upload-url", body='{"owner": "match:wtn:nope"}')[0] == 404
+    assert call("POST /me/photos/upload-url", body='{"owner": "trophy:t123456789abc"}')[0] == 404
+    assert call("POST /me/photos/upload-url", body='{"owner": "../x"}')[0] == 400
+    assert call("POST /me/photos/upload-url", body="not json")[0] == 400
+    assert _photo(bucket, upload=False) == (400, {"error": "upload not found"})
+    assert call("POST /me/photos", body='{"owner": "match:wtn:m1", "id": "../x"}')[0] == 400
+
+
+def test_photos_are_limited_per_owner_and_private_to_the_user(bucket, table) -> None:
+    for _ in range(10):
+        assert _photo(bucket)[0] == 200
+    assert call("POST /me/photos/upload-url", body='{"owner": "match:wtn:m1"}')[0] == 400
+    assert call("GET /me/photos", sub="sub-2")[1]["photos"] == []
+    table.put_item(Item={"PK": "USER#someone", "SK": "PHOTO#match:wtn:x#p123456789ab"})
+    assert call("DELETE /me/photos/{id}", match_id="p123456789ab")[0] == 404
+
+
+def test_deleting_a_trophy_deletes_its_photos(bucket) -> None:
+    trophy = _add()[1]["id"]
+    photo = _photo(bucket, owner=f"trophy:{trophy}")[1]["id"]
+    assert call("DELETE /me/trophies/{id}", match_id=trophy)[0] == 200
+    assert call("GET /me/photos")[1]["photos"] == []
+    assert "Contents" not in bucket.list_objects_v2(Bucket="photos", Prefix=f"owner/{photo}")
