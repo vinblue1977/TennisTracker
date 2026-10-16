@@ -1,5 +1,6 @@
 """Infrastructure tests: the stack synthesizes, passes cdk-nag, and its table and deploy role are locked down."""
 
+import functools
 import json
 from pathlib import Path
 
@@ -23,6 +24,12 @@ def _stack(context: dict | None = None, account: str | None = "123456789012") ->
     return stack
 
 
+@functools.cache
+def _template() -> Template:
+    """The default stack, built once and shared: synthesizing it is the slow part of these tests."""
+    return Template.from_stack(_stack())
+
+
 def test_synthesizes_in_us_east_2() -> None:
     stack = _stack()
     Template.from_stack(stack)
@@ -39,7 +46,7 @@ def test_no_cdk_nag_findings(account: str | None) -> None:
 
 
 def test_table_is_protected_and_on_demand() -> None:
-    template = Template.from_stack(_stack())
+    template = _template()
     template.has_resource(
         "AWS::DynamoDB::GlobalTable",
         {
@@ -62,7 +69,7 @@ def test_table_is_protected_and_on_demand() -> None:
 
 
 def test_deploy_role_trusts_only_this_repo_production_environment() -> None:
-    template = Template.from_stack(_stack())
+    template = _template()
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -114,7 +121,7 @@ def test_rejects_malformed_repo() -> None:
 
 
 def test_api_routes_require_sign_in_and_site_is_private() -> None:
-    template = Template.from_stack(_stack())
+    template = _template()
     routes = template.find_resources("AWS::ApiGatewayV2::Route")
     assert len(routes) == 4 and all(r["Properties"]["AuthorizationType"] == "JWT" for r in routes.values())
     template.has_resource_properties(
