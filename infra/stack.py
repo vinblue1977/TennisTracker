@@ -57,7 +57,7 @@ class TennisTrackerStack(Stack):
         # 11:00 UTC = 06:00 Chicago in summer (05:00 in winter).
         self._scheduled("WtnSync", "wtn_sync.handler.handler", events.Schedule.cron(minute="0", hour="11"), topic, "WTN sync")
         calendar = self._scheduled(
-            "CalendarSync", "calendar_sync.handler.handler", events.Schedule.rate(Duration.hours(1)), topic, "Calendar sync"
+            "CalendarSync", "calendar_sync.handler.handler", events.Schedule.rate(Duration.minutes(15)), topic, "Calendar sync"
         )
         self._scheduled(
             "Reminders", "push.reminders.handler", events.Schedule.rate(Duration.minutes(15)), topic, "Match reminders"

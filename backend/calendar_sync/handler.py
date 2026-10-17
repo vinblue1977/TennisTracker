@@ -1,4 +1,4 @@
-"""Hourly Lambda: upcoming matches from each profile's calendar link (UPCOMING# items)."""
+"""Lambda every 15 minutes: upcoming matches from each profile's calendar link (UPCOMING# items)."""
 
 import os
 from datetime import UTC, datetime, timedelta
@@ -11,7 +11,7 @@ from calendar_sync.fetch import CalendarError, fetch
 from calendar_sync.ics import Event, parse
 
 AHEAD = timedelta(days=120)
-ALERT_AFTER_FAILURES = 24  # hourly runs: a full day of failures
+ALERT_AFTER_FAILURES = 96  # 15-minute runs: a full day of failures
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
