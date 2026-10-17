@@ -342,7 +342,7 @@ def _put_calendar(table: Any, user: str, body: str | None) -> dict[str, Any]:
     if url:
         table.update_item(Key=key, UpdateExpression="SET calendarUrl = :u", ExpressionAttributeValues={":u": url})
         function = os.environ.get("CALENDAR_FUNCTION")
-        if function:  # sync now rather than at the next hourly run
+        if function:  # sync now rather than at the next scheduled run
             boto3.client("lambda").invoke(FunctionName=function, InvocationType="Event", Payload=json.dumps({"user": user}))
     else:
         table.update_item(Key=key, UpdateExpression="REMOVE calendarUrl")
