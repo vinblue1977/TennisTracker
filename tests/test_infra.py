@@ -28,21 +28,23 @@ def _stack(context: dict | None = None, account: str | None = "123456789012") ->
 
 
 @functools.cache
-def _template() -> Template:
-    """The default stack, built once and shared: synthesizing it is the slow part of these tests."""
-    return Template.from_stack(_stack())
+def _synthesized(context: str | None = None, account: str | None = "123456789012") -> tuple[TennisTrackerStack, Template]:
+    """A stack and its template, built once per context (as JSON) and account: synthesizing is the slow part of these tests."""
+    stack = _stack(None if context is None else json.loads(context), account)
+    return stack, Template.from_stack(stack)
+
+
+def _template(context: dict | None = None) -> Template:
+    return _synthesized(None if context is None else json.dumps(context, sort_keys=True))[1]
 
 
 def test_synthesizes_in_us_east_2() -> None:
-    stack = _stack()
-    Template.from_stack(stack)
-    assert stack.region == "us-east-2"
+    assert _synthesized()[0].region == "us-east-2"
 
 
 @pytest.mark.parametrize("account", ["123456789012", None])  # None: CI synth without AWS credentials
 def test_no_cdk_nag_findings(account: str | None) -> None:
-    stack = _stack(account=account)
-    Template.from_stack(stack)  # runs the aspects
+    stack, _ = _synthesized(account=account)  # synthesizing runs the aspects
     annotations = Annotations.from_stack(stack)
     assert annotations.find_error("*", Match.string_like_regexp("AwsSolutions-.*")) == []
     assert annotations.find_warning("*", Match.string_like_regexp("AwsSolutions-.*")) == []
@@ -106,11 +108,11 @@ def test_no_deploy_role_without_repo() -> None:
             {"Statement": [Match.object_like({"Action": "sts:AssumeRoleWithWebIdentity"})]}
         )
     }
-    Template.from_stack(_stack({})).resource_properties_count_is("AWS::IAM::Role", web_identity, 0)
+    _template({}).resource_properties_count_is("AWS::IAM::Role", web_identity, 0)
 
 
 def test_wtn_sync_runs_daily_and_alerts_on_crash() -> None:
-    template = Template.from_stack(_stack({"alertEmail": "alerts@example.com"}))
+    template = _template({"alertEmail": "alerts@example.com"})
     template.has_resource_properties("AWS::Lambda::Function", {"Runtime": "python3.14", "Handler": "wtn_sync.handler.handler"})
     template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 11 * * ? *)"})
     template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": "Errors", "Threshold": 1})
@@ -119,7 +121,7 @@ def test_wtn_sync_runs_daily_and_alerts_on_crash() -> None:
 
 
 def test_api_alarms_budget_and_widget_throttle() -> None:
-    template = Template.from_stack(_stack({"alertEmail": "alerts@example.com"}))
+    template = _template({"alertEmail": "alerts@example.com"})
     for metric in ("Errors", "Throttles"):
         template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": metric, "Threshold": 3, "Period": 300})
     template.has_resource_properties(
@@ -128,7 +130,7 @@ def test_api_alarms_budget_and_widget_throttle() -> None:
     template.has_resource_properties(
         "AWS::ApiGatewayV2::Stage", {"RouteSettings": {"GET /widget": {"ThrottlingRateLimit": 1, "ThrottlingBurstLimit": 3}}}
     )
-    Template.from_stack(_stack({})).resource_count_is("AWS::Budgets::Budget", 0)
+    _template({}).resource_count_is("AWS::Budgets::Budget", 0)
 
 
 def test_rejects_malformed_repo() -> None:
