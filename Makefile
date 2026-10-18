@@ -8,9 +8,9 @@ CDK ?= npx --no-install cdk
 
 install:            ## Create the virtualenv and install everything (uv if installed, else pip)
 	if command -v uv >/dev/null; then \
-		uv venv --seed --allow-existing --python python3.14 .venv && uv pip install --python $(PYTHON) -r requirements-dev.txt && uv pip install --python $(PYTHON) --require-hashes --no-deps -r layer/requirements.txt && uv pip check --python $(PYTHON); \
+		uv venv --seed --allow-existing --python python3.14 .venv && uv pip install --python $(PYTHON) --require-hashes -r requirements-dev.txt && uv pip install --python $(PYTHON) --require-hashes --no-deps -r layer/requirements.txt && uv pip check --python $(PYTHON); \
 	else \
-		python3.14 -m venv .venv && $(PYTHON) -m pip install --upgrade pip && $(PYTHON) -m pip install -r requirements-dev.txt && $(PYTHON) -m pip install --require-hashes --no-deps -r layer/requirements.txt && $(PYTHON) -m pip check; \
+		python3.14 -m venv .venv && $(PYTHON) -m pip install --upgrade pip && $(PYTHON) -m pip install --require-hashes -r requirements-dev.txt && $(PYTHON) -m pip install --require-hashes --no-deps -r layer/requirements.txt && $(PYTHON) -m pip check; \
 	fi
 	npm ci --ignore-scripts --no-audit --no-fund  # the CDK CLI and pyright
 	npm ci --prefix frontend --ignore-scripts --no-audit --no-fund  # the PWA and its tools
@@ -28,7 +28,7 @@ test:
 	$(PYTHON) -m pytest -n auto
 
 audit:              ## Check dependencies for known vulnerabilities
-	$(PYTHON) -m pip_audit -r requirements-dev.txt
+	$(PYTHON) -m pip_audit --require-hashes --disable-pip -r requirements-dev.txt
 	$(PYTHON) -m pip_audit --require-hashes --disable-pip -r layer/requirements.txt  # what ships
 
 frontend:           ## PWA: ESLint, TypeScript types, Vitest, Vite build and the size limit
@@ -39,7 +39,9 @@ frontend:           ## PWA: ESLint, TypeScript types, Vitest, Vite build and the
 privacy:            ## Fail on TennisID-shaped strings or data exports in tracked files (public repo)
 	scripts/check_personal_data.sh
 
-lock:               ## Regenerate layer/requirements.txt (exact versions + hashes) from layer/requirements.in
+lock:               ## Regenerate the hashed lockfiles (CDK app, dev tools, Lambda layer) from the .in files
+	for d in requirements requirements-dev; do $(PYTHON) -m piptools compile --quiet --generate-hashes --allow-unsafe \
+		--strip-extras --no-emit-index-url --output-file=$$d.txt $$d.in; done
 	cd layer && ../$(PYTHON) -m piptools compile --quiet --generate-hashes --allow-unsafe --strip-extras \
 		--no-emit-index-url --output-file=requirements.txt requirements.in
 	sed -i.bak 's/ --no-index//' layer/requirements.txt && rm layer/requirements.txt.bak
