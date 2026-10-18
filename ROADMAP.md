@@ -29,7 +29,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 
 - [x] Deploy: AWS credentials only after the unhashed dev-tool install
 - [x] Photo uploads land in `incoming/` and expire after a day unless confirmed
-- [ ] Cache the synthesized stack in `tests/test_infra.py` (each test re-synths, ~4 s; saves ~15-20 s per CI run)
+- [x] Cache the synthesized stack in `tests/test_infra.py` (one synth per context)
 - [ ] Hash-lock `requirements.txt` and `requirements-dev.txt` (`pip-compile --generate-hashes`)
 - [ ] Turn on secret scanning for non-provider patterns (free)
 - [ ] Accepted: shared widget throttle can be used to 429 the widget; needs WAF/custom domain to fix
