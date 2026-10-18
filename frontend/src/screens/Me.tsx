@@ -56,16 +56,26 @@ function Manual({ profile, onSave }: { profile: Data['profile']; onSave: (r: Rat
 type MeProps = {
   data: Data;
   onCalendar: (url: string) => Promise<void>;
+  onWtnSync: () => Promise<boolean>;
   onRatings: (r: Ratings) => Promise<void>;
   onTrophies: (change: () => Promise<unknown>) => Promise<void>;
   onPhotos: (change?: () => Promise<unknown>) => Promise<void>;
 };
 
-export function Me({ data, onCalendar, onRatings, onTrophies, onPhotos }: MeProps) {
+export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhotos }: MeProps) {
   const sync = data.profile.sync;
   const calendar = data.profile.calendar;
   const [link, setLink] = useState('');
   const [status, setStatus] = useState('');
+  const [syncStatus, setSyncStatus] = useState('');
+  const syncNow = async () => {
+    setSyncStatus('Syncing…');
+    try {
+      setSyncStatus((await onWtnSync()) ? 'Synced' : 'Still working or failed. Check again in a minute.');
+    } catch {
+      setSyncStatus('Could not start. Try again in a minute.');
+    }
+  };
   const save = async (url: string) => {
     setStatus(url ? 'Connecting…' : 'Disconnecting…');
     try {
@@ -93,6 +103,14 @@ export function Me({ data, onCalendar, onRatings, onTrophies, onPhotos }: MeProp
           <span class="grow">Last sync</span>
           <span style={{ fontWeight: 600, color: sync.status === 'ok' ? 'var(--win-text)' : 'var(--loss-text)' }}>
             {lastRun} · {sync.status ?? '–'}
+          </span>
+        </div>
+        <div class="item">
+          <button class="button quiet" type="button" disabled={syncStatus === 'Syncing…'} onClick={syncNow}>
+            Sync now
+          </button>
+          <span class="muted grow" role="status">
+            {syncStatus}
           </span>
         </div>
       </section>

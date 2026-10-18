@@ -36,6 +36,7 @@ class Web(Construct):
         table: dynamodb.ITableV2,
         site_dir: str,
         calendar_fn: lambda_.IFunction,
+        wtn_fn: lambda_.IFunction,
         layer: lambda_.ILayerVersion,
         push_env: dict[str, str],
         topic: sns.ITopic,
@@ -216,6 +217,7 @@ class Web(Construct):
                 "TABLE_NAME": table.table_name,
                 "PHOTO_BUCKET": photos.bucket_name,
                 "CALENDAR_FUNCTION": calendar_fn.function_name,
+                "WTN_FUNCTION": wtn_fn.function_name,
                 **push_env,
             },
             layers=[layer],
@@ -239,6 +241,7 @@ class Web(Construct):
         )
         grant_vapid(fn)  # "send a test"
         calendar_fn.grant_invoke(fn)  # sync right after the calendar link is saved
+        wtn_fn.grant_invoke(fn)  # "Sync now" for WTN
         api = apigw.HttpApi(
             self,
             "HttpApi",
@@ -278,6 +281,7 @@ class Web(Construct):
             (apigw.HttpMethod.DELETE, "/me/photos/{id}"),
             (apigw.HttpMethod.GET, "/me/upcoming"),
             (apigw.HttpMethod.PUT, "/me/calendar"),
+            (apigw.HttpMethod.POST, "/me/wtn-sync"),
             (apigw.HttpMethod.GET, "/me/push"),
             (apigw.HttpMethod.PUT, "/me/push"),
             (apigw.HttpMethod.DELETE, "/me/push"),
