@@ -39,8 +39,8 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Log local match (doubles)
 - [x] One-time spreadsheet import (script outside the repo)
 - [x] Photos on trophies and matches
+- [x] Desktop layout: sidebar from 900 px, two-column Home and Me, Matches list + selected match from 1100 px
 - [ ] Repeating calendar events (e.g. weekly league nights)
-- [ ] Desktop layout
 
 ## Later
 

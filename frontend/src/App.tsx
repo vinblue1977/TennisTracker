@@ -28,6 +28,26 @@ const useHash = () => {
   return hash;
 };
 
+/** True on a desktop-width window: Matches then shows the list and the selected match side by side. */
+const useWide = () => {
+  const query = '(min-width: 1100px)';
+  const [wide, setWide] = useState(window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setWide(media.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+  return wide;
+};
+
+/** The match shown beside the list on a wide window: the opened one, else the newest. */
+export function splitMatchId(hash: string, matches: { id: string }[]): string | null {
+  const opened = hash.match(/^#\/match\/(.+)$/)?.[1];
+  if (opened) return safeDecode(opened);
+  return hash === '#/matches' ? (matches[0]?.id ?? null) : null;
+}
+
 async function loadData(): Promise<Data | null> {
   if (import.meta.env.DEV && isMock()) {
     return (await import('./mock')).mockData;
@@ -49,6 +69,7 @@ async function loadData(): Promise<Data | null> {
 export function App() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const hash = useHash();
+  const wide = useWide();
 
   useEffect(() => {
     loadData()
@@ -146,7 +167,13 @@ export function App() {
   };
   const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
-  const screen = detailId ? (
+  const splitId = state.kind === 'ready' && wide ? splitMatchId(hash, state.data.matches) : null;
+  const screen = splitId ? (
+    <div class="split">
+      <Matches data={data} selectedId={splitId} onPhotos={onPhotos} onMatches={onMatches} />
+      <MatchDetail key={splitId} data={data} id={splitId} onSave={onSave} onPhotos={onPhotos} onMatches={onMatches} />
+    </div>
+  ) : detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} onMatches={onMatches} />
   ) : withName ? (
     <Matches key={withName} data={data} person={safeDecode(withName)} onPhotos={onPhotos} />

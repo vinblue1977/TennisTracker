@@ -13,7 +13,7 @@ export function Home({ data }: { data: Data }) {
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 
   return (
-    <main class="screen">
+    <main class="screen cols">
       <header>
         <div class="muted">{today}</div>
         <h1 class="title">Tennis</h1>

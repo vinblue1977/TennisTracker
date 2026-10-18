@@ -38,7 +38,7 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', onPhotos, onMatches }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; onPhotos?: () => Promise<void>; onMatches?: <T>(change: () => Promise<T>) => Promise<T> }) {
+export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', selectedId = '', onPhotos, onMatches }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; selectedId?: string; onPhotos?: () => Promise<void>; onMatches?: <T>(change: () => Promise<T>) => Promise<T> }) {
   const [query, setQuery] = useState('');
   const [event, setEvent] = useState('');
   const [logging, setLogging] = useState(false);
@@ -121,7 +121,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
         return (
           <>
             {header}
-            <a class="match" href={matchHref(m)}>
+            <a class="match" href={matchHref(m)} aria-current={m.id === selectedId ? 'true' : undefined}>
               <div class="row" style={{ gap: '10px' }}>
                 <MatchHeader m={m} detail={formatDate(matchDate(m))} />
               </div>
