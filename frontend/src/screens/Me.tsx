@@ -80,9 +80,11 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
     const url = URL.createObjectURL(new Blob(['\ufeff', matchesCsv(data.matches)], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tennis-matches-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `tennis-matches-${new Date().toLocaleDateString('sv')}.csv`;
+    document.body.append(a); // iOS Safari ignores clicks on detached links
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
   };
   const save = async (url: string) => {
     setStatus(url ? 'Connecting…' : 'Disconnecting…');
