@@ -89,7 +89,7 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
   const runAt = sync.lastRunAt ? new Date(sync.lastRunAt) : null; // date and time both in the phone's time zone
   const lastRun = runAt ? `${runAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} at ${formatTime(runAt)}` : 'never';
   return (
-    <main class="screen">
+    <main class="screen cols">
       <h1 class="title">Me</h1>
       <section class="list">
         <div class="item eyebrow" style={{ minHeight: '40px' }}>

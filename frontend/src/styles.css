@@ -147,3 +147,28 @@ a.card.tap { display: flex; }
 .fold { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 28px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; }
 .chev { color: var(--muted); transition: transform 0.2s; }
 .chev.up { transform: rotate(180deg); }
+
+.brand { display: none; }
+.match[aria-current='true'] { background: var(--raised); }
+
+/* Desktop: the tab bar becomes a sidebar; Home and Me flow into two columns. */
+@media (min-width: 900px) {
+  .page { padding-left: 220px; }
+  .tabs { inset: 0 auto 0 0; width: 220px; display: flex; flex-direction: column; gap: 4px; padding: 28px 16px; border-top: 0; border-right: 1px solid var(--line); }
+  .brand { display: block; font: 700 30px var(--display); padding: 0 12px 16px; }
+  .tab { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 12px; border-radius: 10px; font-size: 16px; min-height: 44px; }
+  .tab[aria-current='page'] { background: var(--accent); color: var(--on-accent); }
+  .screen { max-width: 760px; padding: 28px 32px 40px; }
+  .screen.cols { max-width: 1100px; display: block; column-count: 2; column-gap: 20px; }
+  .cols > * { break-inside: avoid; margin-bottom: 14px; }
+  .cols > .title { column-span: all; }
+}
+
+/* Wide desktop: Matches shows the list and the selected match side by side. */
+@media (min-width: 1100px) {
+  .split { display: flex; align-items: flex-start; gap: 20px; width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+  .split > .screen { margin: 0; max-width: none; min-width: 0; padding: 28px 0 40px; }
+  .split > .screen:first-child { flex: 1 1 420px; }
+  .split > .screen:last-child { flex: 1 1 460px; position: sticky; top: 0; max-height: 100dvh; overflow-y: auto; }
+  .split .back { display: none; }
+}
