@@ -357,11 +357,27 @@ def _wtn_sync(table: Any, user: str) -> dict[str, Any]:
     """Sync now: the WTN Lambda runs for this user alone, in the background (the app refreshes when it finishes)."""
     if "tennisId" not in table.get_item(Key={"PK": f"USER#{user}", "SK": "PROFILE"}).get("Item", {}):
         return _json(400, {"error": "no TennisID on this profile"})
-    last = table.get_item(Key={"PK": f"USER#{user}", "SK": "SYNC#WTN"}).get("Item", {}).get("lastRunAt")
-    if last and datetime.now(UTC) - datetime.fromisoformat(str(last)) < timedelta(seconds=60):
+    key = {"PK": f"USER#{user}", "SK": "SYNC#WTN"}
+    now = datetime.now(UTC)
+    last = table.get_item(Key=key).get("Item", {}).get("lastRunAt")
+    if last and now - datetime.fromisoformat(str(last)) < timedelta(seconds=60):
         return _json(429, {"error": "synced a moment ago"})  # WTN's API is not ours to hammer
+    try:  # claim the slot before starting, so two quick taps (or two devices) start one sync
+        table.update_item(
+            Key=key,
+            UpdateExpression="SET syncRequestedAt = :now",
+            ConditionExpression="attribute_not_exists(syncRequestedAt) OR syncRequestedAt < :cutoff",
+            ExpressionAttributeValues={":now": now.isoformat(), ":cutoff": (now - timedelta(seconds=60)).isoformat()},
+        )
+    except ClientError as error:
+        if error.response["Error"]["Code"] != "ConditionalCheckFailedException":
+            raise
+        return _json(429, {"error": "a sync was just started"})
     function = os.environ["WTN_FUNCTION"]
-    boto3.client("lambda").invoke(FunctionName=function, InvocationType="Event", Payload=json.dumps({"user": user}))
+    try:
+        boto3.client("lambda").invoke(FunctionName=function, InvocationType="Event", Payload=json.dumps({"user": user}))
+    except ClientError:
+        return _json(502, {"error": "could not start the sync"})
     return _json(202, {"started": True})
 
 

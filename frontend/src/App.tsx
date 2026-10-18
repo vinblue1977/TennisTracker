@@ -20,7 +20,8 @@ const useHash = () => {
   useEffect(() => {
     const onChange = () => {
       setHash(location.hash || '#/');
-      window.scrollTo(0, 0);
+      // Picking a match from the list beside it (wide window) keeps the list where it is.
+      if (!(location.hash.startsWith('#/match/') && window.matchMedia('(min-width: 1100px)').matches)) window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
