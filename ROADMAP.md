@@ -44,7 +44,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 
 ## Ideas: quick wins
 
-- [ ] Export your data: "Download my matches" (CSV or JSON) on the Me tab
+- [x] Export your data: "Download my matches (CSV)" on the Me tab
 - [ ] Season recap card: matches, win %, best partner, biggest upset, trophies; shareable as an image
 - [ ] Streaks and form on Home ("W4", last 5, longest win streak)
 - [ ] Offline read-only mode: service worker caches the last Home and Matches payload

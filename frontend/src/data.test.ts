@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { byYear, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
+import { byYear, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -103,5 +103,16 @@ describe('stats', () => {
   it('rounds win %', () => {
     expect(winPct({ wins: 2, losses: 1 })).toBe(67);
     expect(winPct({ wins: 0, losses: 0 })).toBe(0);
+  });
+});
+
+describe('matchesCsv', () => {
+  it('writes a header, oldest first, quoting commas and neutralising formulas', () => {
+    const a = { ...match('2026-02-01', true), note: '=1+1', partners: [{ name: 'Ann', wtn: 20 }] };
+    const b = { ...match('2026-01-01', false), event: 'Club, Night' };
+    const lines = matchesCsv([a, b]).trim().split('\r\n');
+    expect(lines[0]).toBe('Date,Event,Kind,Result,Score,Partners,Opponents,Best match,Note');
+    expect(lines[1]).toBe('2026-01-01,"Club, Night",DOUBLE,Loss,6-4 6-4,,,,');
+    expect(lines[2]).toBe("2026-02-01,Test League,DOUBLE,Win,6-4 6-4,Ann,,,'=1+1");
   });
 });
