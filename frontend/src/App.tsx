@@ -104,6 +104,21 @@ export function App() {
     const [profile, upcoming] = import.meta.env.DEV && isMock() ? [data.profile, data.upcoming] : await Promise.all([api.profile(), api.upcoming()]);
     setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, profile, upcoming } } : prev));
   };
+  // WTN syncs in the background: poll until the sync time changes (up to 40 s), then reload ratings and matches.
+  const onWtnSync = async () => {
+    const before = data.profile.sync.lastRunAt;
+    if (import.meta.env.DEV && isMock()) return true;
+    await api.syncWtn();
+    for (let i = 0; i < 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+      const profile = await api.profile().catch(() => null);
+      if (!profile || profile.sync.lastRunAt === before) continue;
+      const [ratings, matches] = await Promise.all([api.ratings(), api.matches()]);
+      setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, profile, ratings, matches } } : prev));
+      return profile.sync.status === 'ok';
+    }
+    return false;
+  };
   const onRatings = async (ratings: { utr: number | null; ntrp: number | null }) => {
     const saved = import.meta.env.DEV && isMock() ? ratings : await api.saveRatings(ratings);
     setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, profile: { ...prev.data.profile, ...saved } } } : prev));
@@ -146,7 +161,7 @@ export function App() {
   ) : hash === '#/wtn' ? (
     <WtnHistory data={data} />
   ) : hash === '#/me' ? (
-    <Me data={data} onCalendar={onCalendar} onRatings={onRatings} onTrophies={onTrophies} onPhotos={onPhotos} />
+    <Me data={data} onCalendar={onCalendar} onWtnSync={onWtnSync} onRatings={onRatings} onTrophies={onTrophies} onPhotos={onPhotos} />
   ) : (
     <Home data={data} />
   );

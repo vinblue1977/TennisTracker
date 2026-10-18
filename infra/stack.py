@@ -55,7 +55,9 @@ class TennisTrackerStack(Stack):
         )
         self.push_env = {"VAPID_KEY_PARAM": VAPID_PARAM, "VAPID_SUBJECT": "https://github.com/vinblue1977/TennisTracker"}
         # 11:00 UTC = 06:00 Chicago in summer (05:00 in winter).
-        self._scheduled("WtnSync", "wtn_sync.handler.handler", events.Schedule.cron(minute="0", hour="11"), topic, "WTN sync")
+        wtn = self._scheduled(
+            "WtnSync", "wtn_sync.handler.handler", events.Schedule.cron(minute="0", hour="11"), topic, "WTN sync"
+        )
         calendar = self._scheduled(
             "CalendarSync", "calendar_sync.handler.handler", events.Schedule.rate(Duration.minutes(15)), topic, "Calendar sync"
         )
@@ -69,6 +71,7 @@ class TennisTrackerStack(Stack):
             table=self.table,
             site_dir=site_dir,
             calendar_fn=calendar,  # pyright: ignore[reportArgumentType]
+            wtn_fn=wtn,  # pyright: ignore[reportArgumentType]
             layer=self.layer,
             push_env=self.push_env,
             topic=topic,  # pyright: ignore[reportArgumentType]

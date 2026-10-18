@@ -102,3 +102,10 @@ def test_profiles_pages_through_the_whole_scan() -> None:
     table = PagedTable()
     assert [p["PK"] for p in h.profiles(table)] == ["USER#a", "USER#b"]
     assert table.calls[1]["ExclusiveStartKey"] == {"PK": "x", "SK": "y"}
+
+
+def test_sync_now_runs_only_the_asked_user(aws, monkeypatch: pytest.MonkeyPatch) -> None:
+    table, _ = aws
+    table.put_item(Item={"PK": "USER#other", "SK": "PROFILE", "tennisId": "OTHER-ID"})
+    monkeypatch.setattr(h, "fetch_history", lambda tid, start, end: PAYLOAD)
+    assert [r["user"] for r in h.handler({"user": "owner"}, None)["synced"]] == ["owner"]

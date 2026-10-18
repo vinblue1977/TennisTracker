@@ -5,7 +5,7 @@ import json
 import os
 import re
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import cache
 from typing import Any
@@ -55,6 +55,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _put_ratings(table, user, event.get("body"))
     if route == "PUT /me/calendar":
         return _put_calendar(table, user, event.get("body"))
+    if route == "POST /me/wtn-sync":
+        return _wtn_sync(table, user)
     if route in ("POST /me/matches", "PUT /me/matches/{id}", "DELETE /me/matches/{id}"):
         return _local_match(table, user, route, (event.get("pathParameters") or {}).get("id", ""), event.get("body"))
     if route == "PUT /me/matches/{id}/extras":
@@ -349,6 +351,18 @@ def _put_calendar(table: Any, user: str, body: str | None) -> dict[str, Any]:
         for item in _items(table, user, "UPCOMING#"):
             table.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
     return _json(200, {"connected": bool(url)})
+
+
+def _wtn_sync(table: Any, user: str) -> dict[str, Any]:
+    """Sync now: the WTN Lambda runs for this user alone, in the background (the app refreshes when it finishes)."""
+    if "tennisId" not in table.get_item(Key={"PK": f"USER#{user}", "SK": "PROFILE"}).get("Item", {}):
+        return _json(400, {"error": "no TennisID on this profile"})
+    last = table.get_item(Key={"PK": f"USER#{user}", "SK": "SYNC#WTN"}).get("Item", {}).get("lastRunAt")
+    if last and datetime.now(UTC) - datetime.fromisoformat(str(last)) < timedelta(seconds=60):
+        return _json(429, {"error": "synced a moment ago"})  # WTN's API is not ours to hammer
+    function = os.environ["WTN_FUNCTION"]
+    boto3.client("lambda").invoke(FunctionName=function, InvocationType="Event", Payload=json.dumps({"user": user}))
+    return _json(202, {"started": True})
 
 
 def _push(table: Any, user: str, route: str, event: dict[str, Any]) -> dict[str, Any]:

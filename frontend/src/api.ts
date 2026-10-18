@@ -55,6 +55,7 @@ export const api = {
   saveRatings: (ratings: { utr?: number | null; ntrp?: number | null }) =>
     call<{ utr: number | null; ntrp: number | null }>('/me/ratings', { method: 'PUT', body: JSON.stringify(ratings) }),
   saveCalendar: (url: string) => call<{ connected: boolean }>('/me/calendar', { method: 'PUT', body: JSON.stringify({ url }) }),
+  syncWtn: () => call<{ started: boolean }>('/me/wtn-sync', { method: 'POST' }),
   pushStatus: (endpoint: string) => call<{ devices: number; thisDevice: boolean }>(`/me/push?endpoint=${encodeURIComponent(endpoint)}`),
   pushOn: (subscription: PushSubscriptionJSON, timeZone: string) => call<{ devices: number }>('/me/push', { method: 'PUT', body: JSON.stringify({ ...subscription, timeZone }) }),
   pushOff: (endpoint: string) => call<{ devices: number }>('/me/push', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),

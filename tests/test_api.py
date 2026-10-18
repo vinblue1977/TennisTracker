@@ -1,6 +1,7 @@
 """`/me` API on fake DynamoDB (moto) with made-up data."""
 
 import json
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import boto3
@@ -381,3 +382,24 @@ def test_synced_and_other_users_matches_cannot_be_changed(table) -> None:
         assert call("PUT /me/matches/{id}", match_id=mid, body=json.dumps(LOGGED))[0] == 404
         assert call("DELETE /me/matches/{id}", match_id=mid)[0] == 404
     assert table.get_item(Key={"PK": "USER#owner", "SK": "MATCH#2026-10-02#wtn:m1"}).get("Item")
+
+
+def test_wtn_sync_now_starts_one_user_and_waits_a_minute_between_runs(table, monkeypatch: pytest.MonkeyPatch) -> None:
+    invoked: list[dict] = []
+
+    class FakeLambda:
+        def invoke(self, **kwargs) -> None:
+            invoked.append(kwargs)
+
+    monkeypatch.setenv("WTN_FUNCTION", "wtn-fn")
+    monkeypatch.setattr(api.boto3, "client", lambda name: FakeLambda())
+    assert call("POST /me/wtn-sync") == (202, {"started": True})
+    assert invoked == [{"FunctionName": "wtn-fn", "InvocationType": "Event", "Payload": '{"user": "owner"}'}]
+
+    just_now = datetime.now(UTC).isoformat()
+    table.put_item(Item={"PK": "USER#owner", "SK": "SYNC#WTN", "status": "ok", "lastRunAt": just_now})
+    assert call("POST /me/wtn-sync")[0] == 429 and len(invoked) == 1
+
+    table.delete_item(Key={"PK": "USER#owner", "SK": "PROFILE"})
+    table.put_item(Item={"PK": "USER#owner", "SK": "PROFILE"})
+    assert call("POST /me/wtn-sync")[0] == 400  # no TennisID
