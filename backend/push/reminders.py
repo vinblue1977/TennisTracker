@@ -1,7 +1,7 @@
-"""Every 15 minutes: match reminders at 8:00pm the evening before and 2 hours before (user's time zone)."""
+"""Every 15 minutes: a match reminder 2 hours before the start."""
 
 import os
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -14,21 +14,16 @@ DEFAULT_ZONE = "America/Chicago"
 LATE = timedelta(hours=1)  # skip a reminder that is this overdue (e.g. a match added at the last minute)
 
 
-def due(start: datetime, zone: ZoneInfo, now: datetime) -> list[str]:
-    """Which reminders are due now: 'evening' (8:00pm the day before) and 'soon' (2 hours before)."""
-    if now >= start:
-        return []
-    local_start = start.astimezone(zone)
-    evening = datetime.combine(local_start.date() - timedelta(days=1), time(20, 0), zone).astimezone(UTC)
+def due(start: datetime, now: datetime) -> list[str]:
+    """Which reminders are due now: 'soon' (2 hours before)."""
     soon = start - timedelta(hours=2)
-    return [k for k, at in (("evening", evening), ("soon", soon)) if at <= now < at + LATE]
+    return ["soon"] if soon <= now < soon + LATE and now < start else []
 
 
-def message(item: dict[str, Any], kind: str, zone: ZoneInfo) -> tuple[str, str]:
+def message(item: dict[str, Any], zone: ZoneInfo) -> tuple[str, str]:
     start = datetime.fromisoformat(item["start"]).astimezone(zone)
-    when = "Tomorrow" if kind == "evening" else "In 2 hours"
     where = f" · {item['location']}" if item.get("location") else ""
-    return f"{when} {clock(start)}: {item['title']}", f"{start:%a %d %b}{where}"
+    return f"In 2 hours {clock(start)}: {item['title']}", f"{start:%a %d %b}{where}"
 
 
 def clock(t: datetime) -> str:
@@ -50,7 +45,7 @@ def run(table: Any, now: datetime) -> int:
         for item in items:
             if item.get("allDay"):
                 continue
-            for kind in due(datetime.fromisoformat(item["start"]), zone, now):
+            for kind in due(datetime.fromisoformat(item["start"]), now):
                 if kind in item.get("reminded", []):
                     continue
                 # Mark first, so a retry never sends twice.
@@ -59,7 +54,7 @@ def run(table: Any, now: datetime) -> int:
                     UpdateExpression="SET reminded = list_append(if_not_exists(reminded, :empty), :kind)",
                     ExpressionAttributeValues={":empty": [], ":kind": [kind]},
                 )
-                title, body = message(item, kind, zone)
+                title, body = message(item, zone)
                 sent += notify(table, user, title, body, "/#/upcoming")
     return sent
 
