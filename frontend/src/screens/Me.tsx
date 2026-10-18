@@ -5,7 +5,7 @@ import { Collapsible } from '../components/Collapsible';
 import { Trophies } from '../components/Trophies';
 import { Notifications } from '../components/Notifications';
 import { Widget } from '../components/Widget';
-import { formatTime } from '../data';
+import { formatTime, matchesCsv } from '../data';
 import type { Data } from '../types';
 
 type Ratings = { utr: number | null; ntrp: number | null };
@@ -76,6 +76,14 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
       setSyncStatus('Could not start. Try again in a minute.');
     }
   };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob(['\ufeff', matchesCsv(data.matches)], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tennis-matches-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   const save = async (url: string) => {
     setStatus(url ? 'Connecting…' : 'Disconnecting…');
     try {
@@ -119,6 +127,12 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
           <span class="grow">Stats</span>
           <span class="muted" aria-hidden="true">›</span>
         </a>
+      </section>
+      <section class="list">
+        <button class="item" type="button" style={{ width: '100%', border: 0, background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer' }} onClick={download}>
+          <span class="grow" style={{ textAlign: 'left' }}>Download my matches (CSV)</span>
+          <span class="muted" aria-hidden="true">↓</span>
+        </button>
       </section>
       <Manual profile={data.profile} onSave={onRatings} />
       <Trophies data={data.trophies} photos={data.photos} onChange={onTrophies} onPhotos={onPhotos} />
