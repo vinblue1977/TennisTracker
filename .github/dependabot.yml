@@ -14,7 +14,7 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-  # The CDK app and dev tools (requirements.txt, requirements-dev.txt).
+  # The CDK app and dev tools (requirements*.in; hashed lockfiles beside them).
   - package-ecosystem: pip
     directory: /
     schedule:
