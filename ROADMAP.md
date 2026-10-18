@@ -31,7 +31,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Photo uploads land in `incoming/` and expire after a day unless confirmed
 - [x] Cache the synthesized stack in `tests/test_infra.py` (one synth per context)
 - [ ] Hash-lock `requirements.txt` and `requirements-dev.txt` (`pip-compile --generate-hashes`)
-- [ ] Turn on secret scanning for non-provider patterns (free)
+- [x] Secret scanning is on (provider patterns + push protection); the non-provider option is not offered for this repo (no toggle in Settings, API ignores it)
 - [ ] Accepted: shared widget throttle can be used to 429 the widget; needs WAF/custom domain to fix
 
 ## Then
