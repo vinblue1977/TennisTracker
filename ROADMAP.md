@@ -44,7 +44,6 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 
 ## Later
 
-- [ ] Photo album
 - [ ] Tennis news (RSS or a free pro-tennis API plan)
 - [ ] Tennis Warehouse deal watchlist (check their terms first)
 - [ ] Match insights with a small Claude model
