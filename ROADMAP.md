@@ -21,9 +21,9 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Tappable Home cards: WTN → rating history, Win–loss → Matches, Upset wins → filtered list, Next match → Upcoming
 - [x] Stats screen (doubles): win % by year, partners, head-to-head; from Home Win–loss and Me
 
-## Next: WTN dashboard on iPhone
+## Next
 
-- [ ] "Sync now" from the Mac (`make sync`)
+- [x] "Sync now" from the Mac (`make sync`)
 
 ## Security and CI follow-ups (Oct 2026 review)
 
@@ -41,6 +41,28 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Photos on trophies and matches
 - [x] Desktop layout: sidebar from 900 px, two-column Home and Me, Matches list + selected match from 1100 px
 - [ ] Repeating calendar events (e.g. weekly league nights)
+
+## Ideas: quick wins
+
+- [ ] Export your data: "Download my matches" (CSV or JSON) on the Me tab
+- [ ] Season recap card: matches, win %, best partner, biggest upset, trophies; shareable as an image
+- [ ] Streaks and form on Home ("W4", last 5, longest win streak)
+- [ ] Offline read-only mode: service worker caches the last Home and Matches payload
+- [ ] Pre-match notes on the Next match card: head-to-head and your last note about the opponent
+
+## Ideas: medium
+
+- [ ] Partner and opponent pages: record, timeline, scores, notes
+- [ ] Surface and venue tags (hard/clay, indoor/outdoor, club) with win % per tag
+- [ ] WTN trend chart with a 3-month projection and the matches that moved it most
+- [ ] Match-day push the evening before: time, location, weather (Open-Meteo, no key), pack reminder
+- [ ] Score entry for tiebreaks, match tiebreaks (10-point) and retirements
+
+## Ideas: longer
+
+- [ ] Monthly Claude Haiku summary of notes and results (cents per month)
+- [ ] Revocable read-only share link for a partner or coach (reuse the widget token mechanism)
+- [ ] Practice and fitness log (hitting, lessons, injuries) on the match timeline
 
 ## Later
 
