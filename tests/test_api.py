@@ -396,6 +396,8 @@ def test_wtn_sync_now_starts_one_user_and_waits_a_minute_between_runs(table, mon
     assert call("POST /me/wtn-sync") == (202, {"started": True})
     assert invoked == [{"FunctionName": "wtn-fn", "InvocationType": "Event", "Payload": '{"user": "owner"}'}]
 
+    assert call("POST /me/wtn-sync")[0] == 429 and len(invoked) == 1  # a second tap while the first is starting
+
     just_now = datetime.now(UTC).isoformat()
     table.put_item(Item={"PK": "USER#owner", "SK": "SYNC#WTN", "status": "ok", "lastRunAt": just_now})
     assert call("POST /me/wtn-sync")[0] == 429 and len(invoked) == 1

@@ -19,7 +19,12 @@ START_DATE = "2010-01-01"  # before any WTN rating
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])  # pyright: ignore[reportAttributeAccessIssue]
     only = (event or {}).get("user")  # set when the API asks for an immediate sync
-    return {"synced": [sync_user(table, p) for p in profiles(table) if not only or p["PK"] == f"USER#{only}"]}
+    return {"synced": [sync_user(table, p) for p in (_one(table, str(only)) if only else profiles(table))]}
+
+
+def _one(table: Any, user: str) -> list[dict[str, Any]]:
+    profile = table.get_item(Key={"PK": f"USER#{user}", "SK": "PROFILE"}).get("Item")
+    return [profile] if profile and "tennisId" in profile else []
 
 
 def profiles(table: Any) -> list[dict[str, Any]]:

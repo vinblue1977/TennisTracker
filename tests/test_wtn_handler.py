@@ -109,3 +109,11 @@ def test_sync_now_runs_only_the_asked_user(aws, monkeypatch: pytest.MonkeyPatch)
     table.put_item(Item={"PK": "USER#other", "SK": "PROFILE", "tennisId": "OTHER-ID"})
     monkeypatch.setattr(h, "fetch_history", lambda tid, start, end: PAYLOAD)
     assert [r["user"] for r in h.handler({"user": "owner"}, None)["synced"]] == ["owner"]
+
+
+def test_sync_now_for_a_user_without_tennis_id_does_nothing(aws, monkeypatch: pytest.MonkeyPatch) -> None:
+    table, _ = aws
+    table.put_item(Item={"PK": "USER#other", "SK": "PROFILE"})
+    monkeypatch.setattr(h, "fetch_history", lambda tid, start, end: PAYLOAD)
+    assert h.handler({"user": "other"}, None) == {"synced": []}
+    assert h.handler({"user": "nobody"}, None) == {"synced": []}
