@@ -80,15 +80,15 @@ def test_one_failing_device_does_not_stop_the_rest(table, monkeypatch: pytest.Mo
 @pytest.mark.parametrize(
     ("now", "expected"),
     [
-        (datetime(2026, 10, 16, 0, 59, tzinfo=UTC), []),  # 19:59 Chicago the evening before
-        (datetime(2026, 10, 16, 1, 0, tzinfo=UTC), ["evening"]),  # 20:00 Chicago
-        (datetime(2026, 10, 16, 2, 30, tzinfo=UTC), []),  # over an hour late: skipped
+        (datetime(2026, 10, 16, 1, 0, tzinfo=UTC), []),  # 20:00 Chicago the evening before: no reminder
+        (datetime(2026, 10, 16, 18, 59, tzinfo=UTC), []),  # 2 hours and a minute before
+        (datetime(2026, 10, 16, 20, 5, tzinfo=UTC), []),  # over an hour late: skipped
         (datetime(2026, 10, 16, 19, 0, tzinfo=UTC), ["soon"]),  # 14:00 Chicago, match at 16:00
         (datetime(2026, 10, 16, 21, 0, tzinfo=UTC), []),  # started
     ],
 )
 def test_reminder_times(now: datetime, expected: list[str]) -> None:
-    assert r.due(datetime(2026, 10, 16, 21, 0, tzinfo=UTC), CHICAGO, now) == expected
+    assert r.due(datetime(2026, 10, 16, 21, 0, tzinfo=UTC), now) == expected
 
 
 def test_reminders_send_once_each(table, sent) -> None:
@@ -97,11 +97,10 @@ def test_reminders_send_once_each(table, sent) -> None:
         Item={"PK": "USER#owner", "SK": "UPCOMING#2026-10-17T02:00Z#u1", "title": "League final", "location": "Test Club",
               "start": "2026-10-17T02:00:00+00:00", "end": "2026-10-17T04:00:00+00:00", "allDay": False}
     )  # fmt: skip
-    evening = datetime(2026, 10, 16, 1, 5, tzinfo=UTC)  # 20:05 Chicago, the day before
-    assert r.run(table, evening) == 1 and r.run(table, evening) == 0
-    assert sent[0] == {"title": "Tomorrow 9:00pm: League final", "body": "Fri 16 Oct · Test Club", "url": "/#/upcoming"}
-    assert r.run(table, datetime(2026, 10, 17, 0, 10, tzinfo=UTC)) == 1  # 2 hours before
-    assert sent[1]["title"] == "In 2 hours 9:00pm: League final"
+    assert r.run(table, datetime(2026, 10, 16, 1, 5, tzinfo=UTC)) == 0  # no evening-before reminder
+    soon = datetime(2026, 10, 17, 0, 10, tzinfo=UTC)  # 2 hours before
+    assert r.run(table, soon) == 1 and r.run(table, soon) == 0
+    assert sent[0] == {"title": "In 2 hours 9:00pm: League final", "body": "Fri 16 Oct · Test Club", "url": "/#/upcoming"}
 
 
 def test_push_api_turns_on_tests_and_turns_off(table, sent) -> None:

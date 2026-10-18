@@ -14,7 +14,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] iPhone app: sign-in, Home, Matches, Match detail, notes, best-match stars; dark only; stricter CSP + security lints
 - [x] Calendar sync: every 15 minutes from a public iCloud calendar; Next match on Home; Upcoming tab
 - [x] Dark sign-in page
-- [x] Push notifications: match reminders (8:00pm the evening before, 2 h before), WTN changes, test button
+- [x] Push notifications: match reminders (2 h before), WTN changes, test button
 - [x] Doubles UTR and NTRP entered by hand (Me tab), shown on Home
 - [x] iPhone Home Screen widget (WTN + next match) via Scriptable and a revocable token
 - [x] Trophies on the Me tab: added by hand, or suggested when you win every match of an event

@@ -96,7 +96,7 @@ export function Notifications({ vapidKey }: { vapidKey: string }) {
   return (
     <Collapsible title="Notifications" summary={on ? 'On for this iPhone' : on === null && supported() ? 'Checking…' : 'Off'}>
       <span class="muted" style={{ fontSize: '14px' }}>
-        Match reminders (8:00pm the evening before, 2 hours before) and WTN changes.
+        Match reminders (2 hours before) and WTN changes.
       </span>
       {body}
       <span class="muted" role="status">
