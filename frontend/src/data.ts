@@ -121,13 +121,13 @@ export function tally(matches: Match[], who: (m: Match) => Player[]): Tally[] {
 /** One CSV row per match, oldest first. Cells that start like a formula get a leading ' so spreadsheets don't run them. */
 export function matchesCsv(matches: Match[]): string {
   const cell = (v: string | number | boolean | null) => {
-    const s = v === null ? '' : String(v);
-    const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+    const s = v === null || v === undefined ? '' : String(v);
+    const safe = /^\s*[=+\-@]|^[\t\r]/.test(s) ? `'${s}` : s;
     return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   const names = (players: Player[]) => players.map((p) => p.name).join(' / ');
   const rows = [...matches]
-    .sort((a, b) => matchDate(a).localeCompare(matchDate(b)))
+    .sort((a, b) => a.SK.localeCompare(b.SK))
     .map((m) => [matchDate(m), m.event, m.kind, m.won === null ? '' : m.won ? 'Win' : 'Loss', m.score, names(m.partners), names(m.opponents), m.starred ? 'yes' : '', m.note]);
   return [['Date', 'Event', 'Kind', 'Result', 'Score', 'Partners', 'Opponents', 'Best match', 'Note'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
