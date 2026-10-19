@@ -217,3 +217,20 @@ def test_unconfirmed_photo_uploads_expire_after_a_day() -> None:
     bucket = next(b for b in _template().find_resources("AWS::S3::Bucket").values() if b["Properties"].get("BucketName"))
     rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
     assert any(r.get("Prefix") == "incoming/" and r["ExpirationInDays"] == 1 for r in rules)
+
+
+def test_backup_runs_sundays_into_a_private_bucket_and_can_only_add_files() -> None:
+    t = _template()
+    t.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 6 ? * SUN *)"})
+
+    def expires_in_90_days(bucket: dict) -> bool:
+        rules = bucket["Properties"].get("LifecycleConfiguration", {}).get("Rules", [])
+        return any(r.get("ExpirationInDays") == 90 for r in rules)
+
+    buckets = [b for b in t.find_resources("AWS::S3::Bucket").values() if expires_in_90_days(b)]
+    assert len(buckets) == 1 and buckets[0]["DeletionPolicy"] == "Retain"
+    assert buckets[0]["Properties"]["PublicAccessBlockConfiguration"]["BlockPublicAcls"] is True
+    statements = [
+        s for p in t.find_resources("AWS::IAM::Policy").values() for s in p["Properties"]["PolicyDocument"]["Statement"]
+    ]
+    assert len([s for s in statements if s["Action"] == "s3:PutObject"]) == 1
