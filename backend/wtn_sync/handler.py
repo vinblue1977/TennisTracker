@@ -52,7 +52,7 @@ def sync_user(table: Any, profile: dict[str, Any], now: datetime | None = None) 
         table.put_item(Item={**previous, "PK": pk, "SK": "SYNC#WTN", "status": "error", "lastRunAt": now.isoformat(),
                              "lastError": str(error)[:500], "consecutiveFailures": failures})  # fmt: skip
         if failures == ALERT_AFTER_FAILURES:
-            _alert(f"Tennis Tracker: WTN sync failed {failures} days in a row.\n\nLast error: {error}")
+            _alert(f"Tennis Tracker: WTN sync failed {failures} runs in a row.\n\nLast error: {error}")
         return {"user": user_id, "status": "error", "failures": failures}
 
     with table.batch_writer() as batch:

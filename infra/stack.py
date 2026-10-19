@@ -54,15 +54,17 @@ class TennisTrackerStack(Stack):
             description="Locked runtime dependencies (layer/requirements.txt)",
         )
         self.push_env = {"VAPID_KEY_PARAM": VAPID_PARAM, "VAPID_SUBJECT": "https://github.com/vinblue1977/TennisTracker"}
-        # 11:00 UTC = 06:00 Chicago in summer (05:00 in winter).
-        wtn = self._scheduled(
-            "WtnSync", "wtn_sync.handler.handler", events.Schedule.cron(minute="0", hour="11"), topic, "WTN sync"
-        )
+        # ITF publishes ratings (and their matches) around Wednesday: sync twice that day, once more Thursday as a safety net.
+        wtn_times = [
+            events.Schedule.cron(minute="0", hour="11,23", week_day="WED"),
+            events.Schedule.cron(minute="0", hour="11", week_day="THU"),
+        ]
+        wtn = self._scheduled("WtnSync", "wtn_sync.handler.handler", wtn_times, topic, "WTN sync")
         calendar = self._scheduled(
-            "CalendarSync", "calendar_sync.handler.handler", events.Schedule.rate(Duration.minutes(15)), topic, "Calendar sync"
+            "CalendarSync", "calendar_sync.handler.handler", [events.Schedule.rate(Duration.minutes(15))], topic, "Calendar sync"
         )
         self._scheduled(
-            "Reminders", "push.reminders.handler", events.Schedule.rate(Duration.minutes(15)), topic, "Match reminders"
+            "Reminders", "push.reminders.handler", [events.Schedule.rate(Duration.minutes(15))], topic, "Match reminders"
         )
         site_dir = self.node.try_get_context("siteDir") or "frontend/dist"
         Web(
@@ -120,7 +122,9 @@ class TennisTrackerStack(Stack):
         )
         return topic
 
-    def _scheduled(self, name: str, handler: str, schedule: events.Schedule, topic: sns.Topic, what: str) -> lambda_.Function:
+    def _scheduled(
+        self, name: str, handler: str, schedules: list[events.Schedule], topic: sns.Topic, what: str
+    ) -> lambda_.Function:
         """A Lambda on a schedule, with table access, 14-day logs and an email if it crashes."""
         fn = lambda_.Function(
             self,
@@ -139,7 +143,9 @@ class TennisTrackerStack(Stack):
         grant_vapid(fn)
         topic.grant_publish(fn)
         target = targets.LambdaFunction(fn)  # pyright: ignore[reportArgumentType]
-        events.Rule(self, f"{name}Schedule", schedule=schedule, targets=[target])  # pyright: ignore[reportArgumentType]
+        for i, schedule in enumerate(schedules):
+            suffix = "" if i == 0 else str(i + 1)
+            events.Rule(self, f"{name}Schedule{suffix}", schedule=schedule, targets=[target])  # pyright: ignore[reportArgumentType]
         fn.metric_errors(period=Duration.days(1)).create_alarm(
             self, f"{name}Errors", threshold=1, evaluation_periods=1, alarm_description=f"{what} Lambda crashed"
         ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
