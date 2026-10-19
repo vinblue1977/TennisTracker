@@ -21,11 +21,11 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Tappable Home cards: WTN → rating history, Win–loss → Matches, Upset wins → filtered list, Next match → Upcoming
 - [x] Stats screen (doubles): win % by year, partners, head-to-head; from Home Win–loss and Me
 - [x] Sync health on Me: last WTN and calendar sync, failures, last match seen
+- [x] "Why did WTN move?": matches listed under each rating in WTN history, plus those not rated yet
 
 ## Next
 
 - [x] "Sync now" from the Mac (`make sync`)
-- [ ] "Why did WTN move?": show the matches behind each rating change in the history
 - [ ] Weekly backup: JSON dump of the table to S3 (lifecycle expiry; PITR stays on)
 
 ## Security and CI follow-ups (Oct 2026 review)
