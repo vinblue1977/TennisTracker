@@ -12,6 +12,7 @@ from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_logs as logs
+from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sns_subscriptions as subs
 from cdk_nag import NagPackSuppression, NagSuppressions, RegexAppliesTo
@@ -66,6 +67,7 @@ class TennisTrackerStack(Stack):
         self._scheduled(
             "Reminders", "push.reminders.handler", [events.Schedule.rate(Duration.minutes(15))], topic, "Match reminders"
         )
+        self._backup(topic)
         site_dir = self.node.try_get_context("siteDir") or "frontend/dist"
         Web(
             self,
@@ -109,6 +111,30 @@ class TennisTrackerStack(Stack):
                 budget_limit=budgets.CfnBudget.SpendProperty(amount=limit, unit="USD"),
             ),
             notifications_with_subscribers=[notify(80, "ACTUAL"), notify(100, "FORECASTED")],
+        )
+
+    def _backup(self, topic: sns.Topic) -> None:
+        """Sundays: the whole table as a JSON file in a private bucket, kept 90 days (point-in-time recovery stays on)."""
+        bucket = s3.Bucket(
+            self,
+            "BackupBucket",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            enforce_ssl=True,
+            minimum_tls_version=1.2,
+            lifecycle_rules=[
+                s3.LifecycleRule(expiration=Duration.days(90), abort_incomplete_multipart_upload_after=Duration.days(1))
+            ],
+            object_ownership=s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
+            removal_policy=RemovalPolicy.RETAIN,
+        )
+        fn = self._scheduled(
+            "Backup", "backup.handler.handler", [events.Schedule.cron(minute="0", hour="6", week_day="SUN")], topic, "Backup"
+        )
+        fn.add_environment("BACKUP_BUCKET", bucket.bucket_name)
+        fn.add_to_role_policy(iam.PolicyStatement(actions=["s3:PutObject"], resources=[bucket.arn_for_objects("backups/*")]))
+        NagSuppressions.add_resource_suppressions(
+            bucket, [NagPackSuppression(id="AwsSolutions-S1", reason="Backups only; access logging costs extra")]
         )
 
     def _alert_topic(self) -> sns.Topic:
