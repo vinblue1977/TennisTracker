@@ -49,7 +49,7 @@ function TrophyForm({ form, onSave, onCancel, onDelete, extra }: { form: Form; o
       </label>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <span class="muted">Partner or note (optional)</span>
-        <input type="text" maxLength={200} autoComplete="off" placeholder="e.g. with Sam, 6-4 6-3" value={f.note} onInput={(e) => setF({ ...f, note: e.currentTarget.value })} />
+        <textarea rows={3} maxLength={200} placeholder="e.g. with Sam, 6-4 6-3" value={f.note} onInput={(e) => setF({ ...f, note: e.currentTarget.value })} />
       </label>
       {extra}
       <button class="button" type="button" disabled={!valid} onClick={() => run(() => onSave(f))}>
