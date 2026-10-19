@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { byYear, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
+import { byYear, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -78,6 +78,26 @@ describe('formatTime', () => {
     expect(formatTime(new Date(2026, 9, 16, 21, 0))).toBe('9:00pm');
     expect(formatTime(new Date(2026, 9, 16, 0, 5))).toBe('12:05am');
     expect(formatTime(new Date(2026, 9, 16, 12, 30))).toBe('12:30pm');
+  });
+});
+
+describe('form', () => {
+  const run = (...results: boolean[]) => results.map((won, i) => match(`2025-01-${String(i + 1).padStart(2, '0')}`, won));
+  it('finds the current win streak and the longest', () => {
+    const f = form(run(true, true, true, true, false, true, true));
+    expect(f.streak).toBe(2);
+    expect(f.longestWin).toBe(4);
+  });
+  it('counts a losing run as negative', () => {
+    expect(form(run(true, false, false)).streak).toBe(-2);
+  });
+  it('shows the last 5 oldest first and the last 10 record, ignoring unplayed and order', () => {
+    const f = form([...run(true, true, false, true, true, true, false, true, true, true, true, false), match('2025-02-01', null)].reverse());
+    expect(f.last).toEqual([true, true, true, true, false]);
+    expect(f.recent).toEqual({ wins: 7, losses: 3 });
+  });
+  it('handles no matches', () => {
+    expect(form([])).toEqual({ last: [], streak: 0, longestWin: 0, recent: { wins: 0, losses: 0 } });
   });
 });
 
