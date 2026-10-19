@@ -1,4 +1,4 @@
-"""Daily Lambda: syncs WTN for every profile with a TennisID and records the result."""
+"""Lambda (Wed twice, Thu once): syncs WTN for every profile with a TennisID and records the result."""
 
 import os
 from datetime import UTC, datetime, timedelta
@@ -12,7 +12,7 @@ from wtn_sync.client import WtnApiError, fetch_history
 from wtn_sync.items import match_item, rating_item
 from wtn_sync.parse import WtnShapeError, parse
 
-ALERT_AFTER_FAILURES = 3
+ALERT_AFTER_FAILURES = 2
 START_DATE = "2010-01-01"  # before any WTN rating
 
 

@@ -1,4 +1,4 @@
-"""The Tennis Tracker stack: data table, daily WTN sync, sign-in, API, hosting and the GitHub deploy role."""
+"""The Tennis Tracker stack: data table, weekly WTN sync, sign-in, API, hosting and the GitHub deploy role."""
 
 import re
 from pathlib import Path
