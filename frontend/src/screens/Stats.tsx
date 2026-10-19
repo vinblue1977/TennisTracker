@@ -6,7 +6,7 @@ import type { Data } from '../types';
 
 const MIN = 2;
 
-function People({ title, rows }: { title: string; rows: Tally[] }) {
+function People({ title, rows, role }: { title: string; rows: Tally[]; role: 'partner' | 'opponent' }) {
   const [all, setAll] = useState(false);
   const frequent = rows.filter((r) => r.wins + r.losses >= MIN);
   const shown = all ? rows : frequent;
@@ -18,7 +18,7 @@ function People({ title, rows }: { title: string; rows: Tally[] }) {
       </div>
       {rows.length === 0 && <p class="muted">None yet.</p>}
       {shown.map((r) => (
-        <a key={r.name} class="stat-row" href={`#/with/${encodeURIComponent(r.name)}`}>
+        <a key={r.name} class="stat-row" href={`#/with/${role}/${encodeURIComponent(r.name)}`}>
           <span class="grow">
             {r.name}
             <span class="bar">
@@ -72,8 +72,8 @@ export function Stats({ data }: { data: Data }) {
           ))}
         </div>
       </section>
-      <People title="Partners" rows={tally(played, (m) => m.partners)} />
-      <People title="Head-to-head" rows={tally(played, (m) => m.opponents)} />
+      <People role="partner" title="Partners" rows={tally(played, (m) => m.partners)} />
+      <People role="opponent" title="Head-to-head" rows={tally(played, (m) => m.opponents)} />
     </main>
   );
 }

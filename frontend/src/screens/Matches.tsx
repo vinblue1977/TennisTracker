@@ -38,7 +38,7 @@ export function MatchRow({ m }: { m: Match }) {
   );
 }
 
-export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', selectedId = '', onPhotos, onMatches }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; selectedId?: string; onPhotos?: () => Promise<void>; onMatches?: <T>(change: () => Promise<T>) => Promise<T> }) {
+export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', role, selectedId = '', onPhotos, onMatches }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; role?: 'partner' | 'opponent'; selectedId?: string; onPhotos?: () => Promise<void>; onMatches?: <T>(change: () => Promise<T>) => Promise<T> }) {
   const [query, setQuery] = useState('');
   const [event, setEvent] = useState('');
   const [logging, setLogging] = useState(false);
@@ -51,7 +51,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
   }
   const tournaments = [...events].sort((a, b) => b[1].latest.localeCompare(a[1].latest));
   const shown = data.matches.filter(
-    (m) => (!upsetsOnly || m.upsetGap !== null) && (!event || m.event === event) && (!person || (m.kind === 'DOUBLE' && m.won !== null && [...m.partners, ...m.opponents].some((p) => shortName(p.name) === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
+    (m) => (!upsetsOnly || m.upsetGap !== null) && (!event || m.event === event) && (!person || (m.kind === 'DOUBLE' && m.won !== null && (role === 'partner' ? m.partners : role === 'opponent' ? m.opponents : [...m.partners, ...m.opponents]).some((p) => shortName(p.name) === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
   );
   let year = '';
 
