@@ -202,7 +202,8 @@ export function App() {
     else errorAt.current = Date.now();
     await loadPhotos();
   };
-  const withName = hash.match(/^#\/with\/(.+)$/)?.[1];
+  const withMatch = hash.match(/^#\/with\/(?:(partner|opponent)\/)?(.+)$/);
+  const withName = withMatch?.[2];
   const detailId = hash.match(/^#\/match\/(.+)$/)?.[1];
   const splitId = state.kind === 'ready' && wide ? splitMatchId(hash, state.data.matches) : null;
   const screen = splitId ? (
@@ -213,7 +214,7 @@ export function App() {
   ) : detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} onMatches={onMatches} />
   ) : withName ? (
-    <Matches key={withName} data={data} person={safeDecode(withName)} onPhotos={onPhotos} />
+    <Matches key={hash} data={data} person={safeDecode(withName)} role={withMatch?.[1] as 'partner' | 'opponent' | undefined} onPhotos={onPhotos} />
   ) : hash === '#/stats' ? (
     <Stats data={data} />
   ) : hash === '#/matches' ? (
