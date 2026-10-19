@@ -1,6 +1,6 @@
 import { Donut, Trend } from '../components/Charts';
 import { UpcomingCard } from '../components/Upcoming';
-import { formatDate, latest, matchDate, ratingHistory, record, shortName } from '../data';
+import { form, formatDate, latest, matchDate, playedDoubles, ratingHistory, record, shortName } from '../data';
 import type { Data } from '../types';
 import { MatchRow } from './Matches';
 
@@ -8,7 +8,8 @@ export function Home({ data }: { data: Data }) {
   const points = ratingHistory(data.ratings, data.matches);
   const now = latest(points);
   const { wins, losses } = record(data.matches);
-  const upsets = data.matches.filter((m) => m.upsetGap !== null).sort((a, b) => (b.upsetGap ?? 0) - (a.upsetGap ?? 0));
+  const streakForm = form(playedDoubles(data.matches));
+  const upsets =data.matches.filter((m) => m.upsetGap !== null).sort((a, b) => (b.upsetGap ?? 0) - (a.upsetGap ?? 0));
   const biggest = upsets[0];
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 
@@ -83,6 +84,27 @@ export function Home({ data }: { data: Data }) {
           </span>
         </a>
       </div>
+
+      {streakForm.last.length > 0 && (
+        <a class="card tap" href="#/matches" style={{ flexDirection: 'column', gap: '10px' }} aria-label="Recent form, see matches">
+          <div class="row" style={{ justifyContent: 'space-between' }}>
+            <span class="eyebrow">Form</span>
+            {streakForm.streak >= 2 && <span class="pill">W{streakForm.streak} streak</span>}
+            {streakForm.streak <= -2 && <span class="muted">L{-streakForm.streak} run</span>}
+          </div>
+          <div class="row" style={{ gap: '8px' }} aria-label="Last results, oldest first">
+            {streakForm.last.map((won) => (
+              <span class={`badge ${won ? 'W' : 'L'}`}>{won ? 'W' : 'L'}</span>
+            ))}
+          </div>
+          <div class="row muted" style={{ gap: '20px', fontSize: '14px' }}>
+            <span>Longest W{streakForm.longestWin}</span>
+            <span>
+              Last {streakForm.recent.wins + streakForm.recent.losses} {streakForm.recent.wins}–{streakForm.recent.losses}
+            </span>
+          </div>
+        </a>
+      )}
 
       <div class="row" style={{ justifyContent: 'space-between', padding: '4px 4px 0' }}>
         <h2 style={{ margin: 0, fontSize: '18px' }}>Recent results</h2>

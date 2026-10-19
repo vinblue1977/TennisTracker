@@ -35,6 +35,35 @@ export function record(matches: Match[]): { wins: number; losses: number } {
   };
 }
 
+export interface Form {
+  /** Last results, oldest first. */
+  last: boolean[];
+  /** Current run: positive = wins in a row, negative = losses in a row, 0 = no matches. */
+  streak: number;
+  longestWin: number;
+  /** Record over the last 10 matches. */
+  recent: { wins: number; losses: number };
+}
+
+/** Form from played matches, whatever their order. */
+export function form(matches: Match[], show = 5): Form {
+  const results = matches
+    .filter((m) => m.won !== null)
+    .sort((a, b) => matchDate(a).localeCompare(matchDate(b)))
+    .map((m) => m.won === true);
+  let streak = 0;
+  let run = 0;
+  let longestWin = 0;
+  for (const won of results) {
+    run = won ? Math.max(run, 0) + 1 : Math.min(run, 0) - 1;
+    streak = run;
+    longestWin = Math.max(longestWin, run);
+  }
+  const ten = results.slice(-10);
+  const wins = ten.filter(Boolean).length;
+  return { last: results.slice(-show), streak, longestWin, recent: { wins, losses: ten.length - wins } };
+}
+
 /** The first rating on or after the match date: your WTN after that match. */
 export function wtnAfter(points: Point[], m: Match): number | null {
   return points.find((p) => p.date >= matchDate(m))?.value ?? null;
