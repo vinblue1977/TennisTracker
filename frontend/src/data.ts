@@ -1,5 +1,5 @@
 // Pure helpers that turn API data into what the screens show.
-import type { Match, Player, Rating } from './types';
+import type { Match, Player, Profile, Rating } from './types';
 
 export interface Point {
   date: string;
@@ -159,4 +159,37 @@ export function matchesCsv(matches: Match[]): string {
     .sort((a, b) => a.SK.localeCompare(b.SK))
     .map((m) => [matchDate(m), m.event, m.kind, m.won === null ? '' : m.won ? 'Win' : 'Loss', m.score, names(m.partners), names(m.opponents), m.starred ? 'yes' : '', m.note]);
   return [['Date', 'Event', 'Kind', 'Result', 'Score', 'Partners', 'Opponents', 'Best match', 'Note'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
+}
+
+export interface HealthRow {
+  label: string;
+  value: string;
+  ok: boolean;
+}
+
+const HOUR = 3_600_000;
+
+/** "5 min ago", "3 h ago", "2 days ago". */
+export function ago(iso: string, now = new Date()): string {
+  const ms = Math.max(0, now.getTime() - new Date(iso).getTime());
+  if (ms < HOUR) return `${Math.max(1, Math.round(ms / 60_000))} min ago`;
+  if (ms < 48 * HOUR) return `${Math.round(ms / HOUR)} h ago`;
+  return `${Math.round(ms / (24 * HOUR))} days ago`;
+}
+
+/** Are the syncs alive? WTN runs Wed and Thu (so over 8 days is late); the calendar runs every 15 minutes (over 1 hour is late). */
+export function syncHealth(profile: Profile, matches: Match[], now = new Date()): HealthRow[] {
+  const age = (iso?: string) => (iso ? now.getTime() - new Date(iso).getTime() : Infinity);
+  const row = (label: string, s: { status?: string; lastRunAt?: string; consecutiveFailures?: number }, lateHours: number): HealthRow => {
+    const failing = s.status === 'error';
+    const late = age(s.lastRunAt) > lateHours * HOUR;
+    const when = s.lastRunAt ? ago(s.lastRunAt, now) : 'never';
+    const note = failing ? ` · failing (${s.consecutiveFailures ?? 1} in a row)` : late ? ' · late' : '';
+    return { label, value: when + note, ok: !failing && !late };
+  };
+  const rows = [row('WTN sync', profile.sync, 8 * 24)];
+  if (profile.calendar?.connected) rows.push(row('Calendar sync', profile.calendar, 1));
+  const last = matches.map(matchDate).sort().at(-1);
+  rows.push({ label: 'Last match seen', value: last ? new Date(`${last}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'none yet', ok: true });
+  return rows;
 }

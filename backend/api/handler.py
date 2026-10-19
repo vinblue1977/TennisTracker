@@ -24,6 +24,8 @@ from push.webpush import allowed_endpoint
 MAX_NOTE = 2000
 MATCH_ID = re.compile(r"^(wtn|local):[\w.-]{1,80}$")
 
+SYNC_FIELDS = ("status", "lastRunAt", "consecutiveFailures")
+
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])  # pyright: ignore[reportAttributeAccessIssue]
@@ -88,10 +90,10 @@ def _profile(table: Any, user: str) -> dict[str, Any]:
     calendar = table.get_item(Key={"PK": f"USER#{user}", "SK": "SYNC#CAL"}).get("Item", {})
     return {
         "tennisId": f"{tennis_id[:3]}•••{tennis_id[-4:]}" if tennis_id else None,  # masked
-        "calendar": {"connected": "calendarUrl" in profile, **{k: calendar.get(k) for k in ("status", "lastRunAt", "upcoming")}},
+        "calendar": {"connected": "calendarUrl" in profile, **{k: calendar.get(k) for k in (*SYNC_FIELDS, "upcoming")}},
         "utr": profile.get("utrDoubles"),
         "ntrp": profile.get("ntrp"),
-        "sync": {k: sync.get(k) for k in ("status", "lastRunAt", "latestDate", "latestValue", "matchCount")},
+        "sync": {k: sync.get(k) for k in (*SYNC_FIELDS, "latestDate", "latestValue", "matchCount")},
     }
 
 

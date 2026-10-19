@@ -47,6 +47,7 @@ def call(route: str, sub: str | None = "sub-1", match_id: str | None = None, bod
 def test_profile_masks_tennis_id_and_shows_sync(table) -> None:
     status, body = call("GET /me/profile")
     assert status == 200 and body["tennisId"] == "TES•••D-ME" and body["sync"]["status"] == "ok"
+    assert body["sync"]["consecutiveFailures"] is None  # present for the app's sync health, empty until a failure
 
 
 def test_ratings_and_matches_are_only_the_mapped_users(table) -> None:
