@@ -74,7 +74,7 @@ def test_alerts_once_on_the_third_failure_and_resets_on_success(aws, monkeypatch
     results = [h.sync_user(table, _profile(table), NOW) for _ in range(4)]
     assert [r["failures"] for r in results] == [1, 2, 3, 4]
     messages = inbox()
-    assert len(messages) == 1 and "3 days in a row" in json.loads(messages[0]["Body"])["Message"]
+    assert len(messages) == 1 and "3 runs in a row" in json.loads(messages[0]["Body"])["Message"]
 
     monkeypatch.setattr(h, "fetch_history", lambda tid, start, end: PAYLOAD)
     assert h.sync_user(table, _profile(table), NOW)["status"] == "ok"

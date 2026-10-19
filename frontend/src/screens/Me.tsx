@@ -115,14 +115,19 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
             {lastRun} · {sync.status ?? '–'}
           </span>
         </div>
-        <div class="item">
-          <button class="button quiet" type="button" disabled={syncStatus === 'Syncing…'} onClick={syncNow}>
-            Sync now
-          </button>
-          <span class="muted grow" role="status">
-            {syncStatus}
-          </span>
-        </div>
+        <details>
+          <summary class="item muted" style={{ cursor: 'pointer' }}>
+            Manual sync
+          </summary>
+          <div class="item">
+            <button class="button quiet" type="button" disabled={syncStatus === 'Syncing…'} onClick={syncNow}>
+              Sync now
+            </button>
+            <span class="muted grow" role="status">
+              {syncStatus}
+            </span>
+          </div>
+        </details>
       </section>
       <section class="list">
         <a class="item" href="#/stats">

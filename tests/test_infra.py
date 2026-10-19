@@ -111,10 +111,11 @@ def test_no_deploy_role_without_repo() -> None:
     _template({}).resource_properties_count_is("AWS::IAM::Role", web_identity, 0)
 
 
-def test_wtn_sync_runs_daily_and_alerts_on_crash() -> None:
+def test_wtn_sync_runs_wed_thu_and_alerts_on_crash() -> None:
     template = _template({"alertEmail": "alerts@example.com"})
     template.has_resource_properties("AWS::Lambda::Function", {"Runtime": "python3.14", "Handler": "wtn_sync.handler.handler"})
-    template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 11 * * ? *)"})
+    template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 11,23 ? * WED *)"})
+    template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 11 ? * THU *)"})
     template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": "Errors", "Threshold": 1})
     template.has_resource_properties("AWS::SNS::Subscription", {"Protocol": "email", "Endpoint": "alerts@example.com"})
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 14})

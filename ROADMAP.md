@@ -7,7 +7,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Planning and mockup (iPhone-first, dark mode)
 - [x] Repo + CI: title check, Python/TS checks, CodeQL, Dependabot, privacy guard, branch protection
 - [x] AWS foundation: data table, deploy role, auto-deploy on merge
-- [x] WTN sync: daily Lambda, failure email, first import
+- [x] WTN sync: Lambda (Wed ×2 + Thu), failure email, first import
 - [x] Sign-in (passkeys), `/me` API, hosting URL; faster parallel CI
 - [x] README refresh; `make check` runs all CI checks locally
 - [x] Sign-in account and passkey created
