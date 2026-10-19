@@ -111,7 +111,7 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
           <span style={{ fontWeight: 600 }}>{data.profile.tennisId ?? 'not set'}</span>
         </div>
       </section>
-      <Collapsible title="Sync health" summary={health.every((r) => r.ok) ? 'All good' : 'Needs attention'}>
+      <Collapsible title="Sync health" summary={health.every((r) => r.ok) && (sync.status === 'ok' || !sync.status) ? 'All good' : 'Needs attention'}>
         {health.map((r) => (
           <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
             <span>{r.label}</span>
@@ -125,7 +125,7 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
           </span>
         </div>
         <details>
-          <summary class="muted" style={{ cursor: 'pointer' }}>
+          <summary class="muted" style={{ cursor: 'pointer', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
             Manual sync
           </summary>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
