@@ -1,12 +1,27 @@
 import { Trend } from '../components/Charts';
-import { formatDate, latest, ratingHistory } from '../data';
-import type { Data } from '../types';
+import { formatDate, latest, matchesBehind, matchDate, ratingHistory, shortName } from '../data';
+import type { Data, Match } from '../types';
+import { matchHref } from './Matches';
+
+function MatchLine({ m }: { m: Match }) {
+  const vs = m.opponents.map((o) => shortName(o.name)).join(' & ');
+  return (
+    <a class="item" href={matchHref(m)} style={{ minHeight: '40px', paddingLeft: '28px' }}>
+      <strong style={{ color: m.won ? 'var(--win-text)' : 'var(--loss-text)' }}>{m.won ? 'W' : 'L'}</strong>
+      <span class="grow muted">
+        {m.score}{vs ? ` · vs ${vs}` : ''}
+      </span>
+      <span class="muted">{formatDate(matchDate(m))}</span>
+    </a>
+  );
+}
 
 /** Every doubles WTN reading, newest first, with the change from the reading before. */
 export function WtnHistory({ data }: { data: Data }) {
   const points = ratingHistory(data.ratings, data.matches);
   const now = latest(points);
   const best = points.length ? Math.min(...points.map((p) => p.value)) : null;
+  const { byDate, pending } = matchesBehind(points, data.matches);
   let year = '';
 
   return (
@@ -31,6 +46,14 @@ export function WtnHistory({ data }: { data: Data }) {
       ) : (
         <p class="muted">No WTN yet. It appears after the first sync.</p>
       )}
+      {pending.length > 0 && (
+        <div class="list">
+          <div class="item eyebrow" style={{ minHeight: '40px' }}>Not in your rating yet</div>
+          {pending.map((m) => (
+            <MatchLine key={m.id} m={m} />
+          ))}
+        </div>
+      )}
       <div class="list">
         {points
           .map((p, i) => ({ p, change: i > 0 ? Math.round(((points[i - 1]?.value ?? p.value) - p.value) * 100) / 100 : 0 }))
@@ -46,6 +69,9 @@ export function WtnHistory({ data }: { data: Data }) {
                   <span class="muted">{change === 0 ? '' : change > 0 ? `▼ ${change.toFixed(2)}` : `▲ ${Math.abs(change).toFixed(2)}`}</span>
                   <strong class="num">{p.value.toFixed(2)}</strong>
                 </div>
+                {(byDate.get(p.date) ?? []).map((m) => (
+                  <MatchLine key={m.id} m={m} />
+                ))}
               </>
             );
           })}

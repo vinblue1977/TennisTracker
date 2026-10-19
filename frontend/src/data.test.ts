@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ago, byYear, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
+import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -160,5 +160,18 @@ describe('syncHealth', () => {
     const rows = syncHealth({ tennisId: null, sync: {} }, [], now);
     expect(rows.map((r) => r.label)).toEqual(['WTN sync', 'Last match seen']);
     expect(rows[0]).toMatchObject({ ok: false, value: 'never · late' });
+  });
+});
+
+describe('matchesBehind', () => {
+  const pt = (date: string) => ({ date, value: 25, confidence: null });
+  const m = (date: string, won: boolean | null) => ({ id: date, SK: `MATCH#${date}#x`, won }) as Match;
+  it('assigns each played match to the first rating on or after it, and keeps newer ones pending', () => {
+    const points = [pt('2026-09-21'), pt('2026-09-28'), pt('2026-10-05')];
+    const { byDate, pending } = matchesBehind(points, [m('2026-09-20', true), m('2026-09-28', false), m('2026-10-02', true), m('2026-10-12', true), m('2026-10-14', null)]);
+    expect(byDate.get('2026-09-21')?.map((x) => x.id)).toEqual(['2026-09-20']);
+    expect(byDate.get('2026-09-28')?.map((x) => x.id)).toEqual(['2026-09-28']);
+    expect(byDate.get('2026-10-05')?.map((x) => x.id)).toEqual(['2026-10-02']);
+    expect(pending.map((x) => x.id)).toEqual(['2026-10-12']);
   });
 });

@@ -20,6 +20,18 @@ export function ratingHistory(ratings: Rating[], matches: Match[]): Point[] {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/** Played matches behind each rating (dates in the week since the one before it), plus those WTN has not rated yet. */
+export function matchesBehind(points: Point[], matches: Match[]): { byDate: Map<string, Match[]>; pending: Match[] } {
+  const played = matches.filter((m) => m.won !== null).sort((a, b) => matchDate(b).localeCompare(matchDate(a)));
+  const byDate = new Map<string, Match[]>();
+  points.forEach((p, i) => {
+    const from = points[i - 1]?.date ?? '';
+    byDate.set(p.date, played.filter((m) => matchDate(m) > from && matchDate(m) <= p.date));
+  });
+  const end = points.at(-1)?.date ?? '';
+  return { byDate, pending: played.filter((m) => matchDate(m) > end) };
+}
+
 /** Latest rating and how much better it is than the previous different value (WTN: lower is better). */
 export function latest(points: Point[]): { point: Point; better: number | null } | null {
   const point = points.at(-1);
