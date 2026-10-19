@@ -24,6 +24,9 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 ## Next
 
 - [x] "Sync now" from the Mac (`make sync`)
+- [ ] Sync health on Me: last WTN and calendar sync times, last match seen
+- [ ] "Why did WTN move?": show the matches behind each rating change in the history
+- [ ] Weekly backup: JSON dump of the table to S3 (lifecycle expiry; PITR stays on)
 
 ## Security and CI follow-ups (Oct 2026 review)
 
@@ -57,6 +60,15 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [ ] WTN trend chart with a 3-month projection and the matches that moved it most
 - [ ] Match-day push the evening before: time, location, weather (Open-Meteo, no key), pack reminder
 - [ ] Score entry for tiebreaks, match tiebreaks (10-point) and retirements
+
+- [ ] Post-match debrief push after the scheduled end: one-tap mood and a note prompt
+- [ ] Venue from the calendar event location, with win % per venue
+- [ ] Opponent scouting card: head-to-head, their WTN, your last notes
+- [ ] Pressure stats: third sets, tiebreaks, wins after losing the first set
+- [ ] Partner chemistry: pair win % split by higher or lower rated team
+- [ ] Goal tracker: target WTN or match count with progress on Home
+- [ ] Patterns by weekday, start time and rest days
+- [ ] Weekly digest push (Sunday) to replace smaller pushes
 
 ## Ideas: longer
 
