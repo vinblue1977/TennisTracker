@@ -64,17 +64,17 @@ def test_second_sync_with_same_data_is_unchanged_and_keeps_notes(aws, monkeypatc
     assert table.get_item(Key={"PK": "USER#owner", "SK": "EXTRA#wtn:m-upset"})["Item"]["note"] == "great comeback"
 
 
-def test_alerts_once_on_the_third_failure_and_resets_on_success(aws, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_alerts_once_on_the_second_failure_and_resets_on_success(aws, monkeypatch: pytest.MonkeyPatch) -> None:
     table, inbox = aws
 
     def fail(tid, start, end):
         raise WtnApiError("request failed: HTTP Error 403: Forbidden")
 
     monkeypatch.setattr(h, "fetch_history", fail)
-    results = [h.sync_user(table, _profile(table), NOW) for _ in range(4)]
-    assert [r["failures"] for r in results] == [1, 2, 3, 4]
+    results = [h.sync_user(table, _profile(table), NOW) for _ in range(3)]
+    assert [r["failures"] for r in results] == [1, 2, 3]
     messages = inbox()
-    assert len(messages) == 1 and "3 runs in a row" in json.loads(messages[0]["Body"])["Message"]
+    assert len(messages) == 1 and "2 runs in a row" in json.loads(messages[0]["Body"])["Message"]
 
     monkeypatch.setattr(h, "fetch_history", lambda tid, start, end: PAYLOAD)
     assert h.sync_user(table, _profile(table), NOW)["status"] == "ok"

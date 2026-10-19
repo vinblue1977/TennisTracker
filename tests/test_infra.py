@@ -114,8 +114,12 @@ def test_no_deploy_role_without_repo() -> None:
 def test_wtn_sync_runs_wed_thu_and_alerts_on_crash() -> None:
     template = _template({"alertEmail": "alerts@example.com"})
     template.has_resource_properties("AWS::Lambda::Function", {"Runtime": "python3.14", "Handler": "wtn_sync.handler.handler"})
-    template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 11,23 ? * WED *)"})
-    template.has_resource_properties("AWS::Events::Rule", {"ScheduleExpression": "cron(0 11 ? * THU *)"})
+    functions = template.find_resources("AWS::Lambda::Function")
+    wtn_fn = next(k for k, v in functions.items() if v["Properties"]["Handler"] == "wtn_sync.handler.handler")
+    target = Match.object_like({"Arn": {"Fn::GetAtt": [wtn_fn, "Arn"]}})
+    for expression in ("cron(0 11,23 ? * WED *)", "cron(0 11 ? * THU *)"):
+        rule = {"ScheduleExpression": expression, "Targets": [target]}
+        template.has_resource_properties("AWS::Events::Rule", rule)
     template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": "Errors", "Threshold": 1})
     template.has_resource_properties("AWS::SNS::Subscription", {"Protocol": "email", "Endpoint": "alerts@example.com"})
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 14})
