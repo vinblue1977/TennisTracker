@@ -94,17 +94,33 @@ export function App() {
   };
   const ready = state.kind === 'ready';
   // Reload everything (Home's Refresh button, and when you come back to the app after 5 minutes).
+  const dataRef = useRef<Data | null>(null); // the data on screen now
+  dataRef.current = state.kind === 'ready' ? state.data : null;
+  const refreshing = useRef(false);
+  const triedAt = useRef(0); // last attempt, so a failing refresh is not retried on every tab switch
   const refresh = async () => {
-    if (!isMock()) {
-      const fresh = await fetchAll();
-      setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...fresh, vapidKey: prev.data.vapidKey } } : prev));
+    if (refreshing.current) return;
+    refreshing.current = true;
+    triedAt.current = Date.now();
+    try {
+      if (!isMock()) {
+        const before = dataRef.current;
+        const fresh = await fetchAll();
+        // If something was saved while this loaded, that save already reloaded what it changed: keep it.
+        setState((prev) => (prev.kind === 'ready' && prev.data === before ? { kind: 'ready', data: { ...fresh, vapidKey: prev.data.vapidKey } } : prev));
+      }
+      setLoadedAt(Date.now());
+    } finally {
+      refreshing.current = false;
     }
-    setLoadedAt(Date.now());
   };
   const loadedRef = useRef(loadedAt);
   loadedRef.current = loadedAt;
   useEffect(() => {
-    const onBack = () => document.visibilityState === 'visible' && Date.now() - loadedRef.current > 5 * 60_000 && void refresh().catch(() => undefined);
+    const onBack = () =>
+      document.visibilityState === 'visible' &&
+      Date.now() - Math.max(loadedRef.current, triedAt.current) > 5 * 60_000 &&
+      void refresh().catch(() => undefined);
     if (ready && !isMock()) document.addEventListener('visibilitychange', onBack);
     return () => document.removeEventListener('visibilitychange', onBack);
   }, [ready]);

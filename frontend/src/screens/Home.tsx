@@ -8,9 +8,10 @@ import { MatchRow } from './Matches';
 
 export function Home({ data, loadedAt, onRefresh }: { data: Data; loadedAt: number; onRefresh: () => Promise<void> }) {
   const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
   const refresh = async () => {
     setRefreshing(true);
-    await onRefresh().catch(() => undefined); // keep showing the current data if it fails
+    setFailed(await onRefresh().then(() => false, () => true)); // a failure keeps the current data on screen
     setRefreshing(false);
   };
   const points = ratingHistory(data.ratings, data.matches);
@@ -27,7 +28,7 @@ export function Home({ data, loadedAt, onRefresh }: { data: Data; loadedAt: numb
         <div class="muted">{today}</div>
         <h1 class="title">Tennis</h1>
         <div class="muted" style={{ fontSize: '14px' }} role="status">
-          {refreshing ? 'Refreshing…' : `Updated ${ago(new Date(loadedAt).toISOString())}`} ·{' '}
+          {refreshing ? 'Refreshing…' : failed ? 'Could not refresh' : `Updated ${ago(new Date(loadedAt).toISOString())}`} ·{' '}
           <button class="link" type="button" disabled={refreshing} onClick={refresh}>
             Refresh
           </button>
