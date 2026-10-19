@@ -5,7 +5,7 @@ import { Collapsible } from '../components/Collapsible';
 import { Trophies } from '../components/Trophies';
 import { Notifications } from '../components/Notifications';
 import { Widget } from '../components/Widget';
-import { formatTime, matchesCsv } from '../data';
+import { formatTime, matchesCsv, syncHealth } from '../data';
 import type { Data } from '../types';
 
 type Ratings = { utr: number | null; ntrp: number | null };
@@ -96,6 +96,7 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
       setStatus('That link did not work. Use the public link of an iCloud calendar.');
     }
   };
+  const health = syncHealth(data.profile, data.matches);
   const runAt = sync.lastRunAt ? new Date(sync.lastRunAt) : null; // date and time both in the phone's time zone
   const lastRun = runAt ? `${runAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} at ${formatTime(runAt)}` : 'never';
   return (
@@ -129,6 +130,14 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
           </div>
         </details>
       </section>
+      <Collapsible title="Sync health" summary={health.every((r) => r.ok) ? 'All good' : 'Needs attention'}>
+        {health.map((r) => (
+          <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+            <span>{r.label}</span>
+            <span style={{ fontWeight: 600, color: r.ok ? 'var(--win-text)' : 'var(--loss-text)', textAlign: 'right' }}>{r.value}</span>
+          </div>
+        ))}
+      </Collapsible>
       <section class="list">
         <a class="item" href="#/stats">
           <span class="grow">Stats</span>

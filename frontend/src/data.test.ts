@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { byYear, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
+import { ago, byYear, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -134,5 +134,31 @@ describe('matchesCsv', () => {
     expect(lines[0]).toBe('Date,Event,Kind,Result,Score,Partners,Opponents,Best match,Note');
     expect(lines[1]).toBe('2026-01-01,"Club, Night",DOUBLE,Loss,6-4 6-4,,,,');
     expect(lines[2]).toBe("2026-02-01,Test League,DOUBLE,Win,6-4 6-4,Ann,,,'=1+1");
+  });
+});
+
+describe('syncHealth', () => {
+  const now = new Date('2026-10-19T12:00:00Z');
+  const match = { SK: 'MATCH#2026-10-14#x' } as Match;
+  it('says ago in minutes, hours and days', () => {
+    expect(ago('2026-10-19T11:50:00Z', now)).toBe('10 min ago');
+    expect(ago('2026-10-19T07:00:00Z', now)).toBe('5 h ago');
+    expect(ago('2026-10-15T12:00:00Z', now)).toBe('4 days ago');
+  });
+  it('is all ok when both syncs ran recently', () => {
+    const rows = syncHealth({ tennisId: null, calendar: { connected: true, status: 'ok', lastRunAt: '2026-10-19T11:50:00Z' }, sync: { status: 'ok', lastRunAt: '2026-10-15T11:00:00Z' } }, [match], now);
+    expect(rows.map((r) => r.ok)).toEqual([true, true, true]);
+    expect(rows[2]?.value).toBe('14 Oct 2026');
+  });
+  it('flags failing and late syncs', () => {
+    const rows = syncHealth({ tennisId: null, calendar: { connected: true, status: 'ok', lastRunAt: '2026-10-19T08:00:00Z' }, sync: { status: 'error', lastRunAt: '2026-10-19T11:00:00Z', consecutiveFailures: 2 } }, [], now);
+    expect(rows[0]).toMatchObject({ ok: false, value: '1 h ago · failing (2 in a row)' });
+    expect(rows[1]).toMatchObject({ ok: false, value: '4 h ago · late' });
+    expect(rows[2]?.value).toBe('none yet');
+  });
+  it('skips the calendar when it is not connected and flags a never-run WTN sync', () => {
+    const rows = syncHealth({ tennisId: null, sync: {} }, [], now);
+    expect(rows.map((r) => r.label)).toEqual(['WTN sync', 'Last match seen']);
+    expect(rows[0]).toMatchObject({ ok: false, value: 'never · late' });
   });
 });
