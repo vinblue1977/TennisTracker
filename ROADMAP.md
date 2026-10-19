@@ -23,6 +23,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Sync health on Me: last WTN and calendar sync, failures, last match seen
 - [x] "Why did WTN move?": matches listed under each rating in WTN history, plus those not rated yet
 - [x] Weekly backup: Sunday JSON dump of the table to a private S3 bucket, kept 90 days (PITR stays on)
+- [x] Small polish: location opens in Maps, trophy note counter, Refresh on Home (and after 5 min away), empty Home hint, backup status in sync health
 
 ## Next
 

@@ -56,6 +56,10 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
+  return { ...(await fetchAll()), vapidKey: config.vapidPublicKey ?? '' };
+}
+
+async function fetchAll(): Promise<Omit<Data, 'vapidKey'>> {
   const [profile, ratings, matches, upcoming, trophies, photos] = await Promise.all([
     api.profile(),
     api.ratings(),
@@ -64,17 +68,18 @@ async function loadData(): Promise<Data | null> {
     api.trophies().catch(() => ({ trophies: [], suggestions: [] })),
     api.photos().catch(() => []),
   ]);
-  return { profile, ratings, matches, upcoming, trophies, photos, vapidKey: config.vapidPublicKey ?? '' };
+  return { profile, ratings, matches, upcoming, trophies, photos };
 }
 
 export function App() {
   const [state, setState] = useState<State>({ kind: 'loading' });
+  const [loadedAt, setLoadedAt] = useState(Date.now());
   const hash = useHash();
   const wide = useWide();
 
   useEffect(() => {
     loadData()
-      .then((data) => data && setState({ kind: 'ready', data }))
+      .then((data) => data && (setLoadedAt(Date.now()), setState({ kind: 'ready', data })))
       .catch((e: Error) => setState({ kind: 'error', message: e.message }));
   }, []);
 
@@ -88,6 +93,37 @@ export function App() {
     setState((prev) => (prev.kind === 'ready' ? { kind: 'ready', data: { ...prev.data, photos } } : prev));
   };
   const ready = state.kind === 'ready';
+  // Reload everything (Home's Refresh button, and when you come back to the app after 5 minutes).
+  const dataRef = useRef<Data | null>(null); // the data on screen now
+  dataRef.current = state.kind === 'ready' ? state.data : null;
+  const refreshing = useRef(false);
+  const triedAt = useRef(0); // last attempt, so a failing refresh is not retried on every tab switch
+  const refresh = async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
+    triedAt.current = Date.now();
+    try {
+      if (!isMock()) {
+        const before = dataRef.current;
+        const fresh = await fetchAll();
+        // If something was saved while this loaded, that save already reloaded what it changed: keep it.
+        setState((prev) => (prev.kind === 'ready' && prev.data === before ? { kind: 'ready', data: { ...fresh, vapidKey: prev.data.vapidKey } } : prev));
+      }
+      setLoadedAt(Date.now());
+    } finally {
+      refreshing.current = false;
+    }
+  };
+  const loadedRef = useRef(loadedAt);
+  loadedRef.current = loadedAt;
+  useEffect(() => {
+    const onBack = () =>
+      document.visibilityState === 'visible' &&
+      Date.now() - Math.max(loadedRef.current, triedAt.current) > 5 * 60_000 &&
+      void refresh().catch(() => undefined);
+    if (ready && !isMock()) document.addEventListener('visibilitychange', onBack);
+    return () => document.removeEventListener('visibilitychange', onBack);
+  }, [ready]);
   useEffect(() => {
     if (!ready || isMock()) return;
     const visible = () => document.visibilityState === 'visible';
@@ -191,7 +227,7 @@ export function App() {
   ) : hash === '#/me' ? (
     <Me data={data} onCalendar={onCalendar} onWtnSync={onWtnSync} onRatings={onRatings} onTrophies={onTrophies} onPhotos={onPhotos} />
   ) : (
-    <Home data={data} />
+    <Home data={data} loadedAt={loadedAt} onRefresh={refresh} />
   );
   return (
     <div class="page">

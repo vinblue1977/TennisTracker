@@ -16,6 +16,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     key = f"backups/{datetime.now(UTC):%Y-%m-%d}.json.gz"
     body = gzip.compress(json.dumps({"table": table.name, "items": items}, default=_json, sort_keys=True).encode())
     boto3.client("s3").put_object(Bucket=os.environ["BACKUP_BUCKET"], Key=key, Body=body, ContentType="application/gzip")
+    # The app's sync health card reads this, so a missed backup shows up there.
+    table.put_item(
+        Item={
+            "PK": "SYSTEM",
+            "SK": "SYNC#BACKUP",
+            "status": "ok",
+            "lastRunAt": datetime.now(UTC).isoformat(),
+            "items": len(items),
+        }
+    )
     return {"key": key, "items": len(items)}
 
 

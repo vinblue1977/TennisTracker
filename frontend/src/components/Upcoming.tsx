@@ -18,7 +18,14 @@ export function UpcomingCard({ u, highlight = false }: { u: Upcoming; highlight?
         </div>
         <div class="muted" style={{ fontSize: '14px' }}>
           {formatWhen(u.start, u.allDay)}
-          {u.location ? ` · ${u.location}` : ''}
+          {u.location && ' · '}
+          {u.location && !highlight ? (
+            <a href={`https://maps.apple.com/?q=${encodeURIComponent(u.location)}`} target="_blank" rel="noopener noreferrer">
+              {u.location}
+            </a>
+          ) : (
+            u.location
+          )}
         </div>
       </div>
     </section>
