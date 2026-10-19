@@ -110,25 +110,6 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
           <span class="grow">TennisID</span>
           <span style={{ fontWeight: 600 }}>{data.profile.tennisId ?? 'not set'}</span>
         </div>
-        <div class="item">
-          <span class="grow">Last sync</span>
-          <span style={{ fontWeight: 600, color: sync.status === 'ok' ? 'var(--win-text)' : 'var(--loss-text)' }}>
-            {lastRun} · {sync.status ?? '–'}
-          </span>
-        </div>
-        <details>
-          <summary class="item muted" style={{ cursor: 'pointer' }}>
-            Manual sync
-          </summary>
-          <div class="item">
-            <button class="button quiet" type="button" disabled={syncStatus === 'Syncing…'} onClick={syncNow}>
-              Sync now
-            </button>
-            <span class="muted grow" role="status">
-              {syncStatus}
-            </span>
-          </div>
-        </details>
       </section>
       <Collapsible title="Sync health" summary={health.every((r) => r.ok) ? 'All good' : 'Needs attention'}>
         {health.map((r) => (
@@ -137,6 +118,25 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
             <span style={{ fontWeight: 600, color: r.ok ? 'var(--win-text)' : 'var(--loss-text)', textAlign: 'right' }}>{r.value}</span>
           </div>
         ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+          <span>Last sync</span>
+          <span style={{ fontWeight: 600, color: sync.status === 'ok' ? 'var(--win-text)' : 'var(--loss-text)', textAlign: 'right' }}>
+            {lastRun} · {sync.status ?? '–'}
+          </span>
+        </div>
+        <details>
+          <summary class="muted" style={{ cursor: 'pointer' }}>
+            Manual sync
+          </summary>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+            <button class="button quiet" type="button" disabled={syncStatus === 'Syncing…'} onClick={syncNow}>
+              Sync now
+            </button>
+            <span class="muted grow" role="status">
+              {syncStatus}
+            </span>
+          </div>
+        </details>
       </Collapsible>
       <section class="list">
         <a class="item" href="#/stats">
