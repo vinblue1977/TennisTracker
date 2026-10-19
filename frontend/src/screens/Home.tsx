@@ -1,10 +1,18 @@
 import { Donut, Trend } from '../components/Charts';
 import { UpcomingCard } from '../components/Upcoming';
-import { form, formatDate, latest, matchDate, playedDoubles, ratingHistory, record, shortName } from '../data';
+import { useState } from 'preact/hooks';
+
+import { ago, form, formatDate, latest, matchDate, playedDoubles, ratingHistory, record, shortName } from '../data';
 import type { Data } from '../types';
 import { MatchRow } from './Matches';
 
-export function Home({ data }: { data: Data }) {
+export function Home({ data, loadedAt, onRefresh }: { data: Data; loadedAt: number; onRefresh: () => Promise<void> }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    await onRefresh().catch(() => undefined); // keep showing the current data if it fails
+    setRefreshing(false);
+  };
   const points = ratingHistory(data.ratings, data.matches);
   const now = latest(points);
   const { wins, losses } = record(data.matches);
@@ -18,6 +26,12 @@ export function Home({ data }: { data: Data }) {
       <header>
         <div class="muted">{today}</div>
         <h1 class="title">Tennis</h1>
+        <div class="muted" style={{ fontSize: '14px' }} role="status">
+          {refreshing ? 'Refreshing…' : `Updated ${ago(new Date(loadedAt).toISOString())}`} ·{' '}
+          <button class="link" type="button" disabled={refreshing} onClick={refresh}>
+            Refresh
+          </button>
+        </div>
       </header>
 
       <a class="hero" href="#/wtn" aria-label="World Tennis Number, see history">
@@ -112,6 +126,7 @@ export function Home({ data }: { data: Data }) {
           All matches
         </a>
       </div>
+      {data.matches.length === 0 && <p class="muted">No matches yet. They appear after the first WTN sync, or log one under Matches.</p>}
       <div class="list">
         {data.matches.slice(0, 3).map((m) => (
           <MatchRow m={m} />

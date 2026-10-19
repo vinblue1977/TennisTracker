@@ -88,9 +88,11 @@ def _profile(table: Any, user: str) -> dict[str, Any]:
     sync = table.get_item(Key={"PK": f"USER#{user}", "SK": "SYNC#WTN"}).get("Item", {})
     tennis_id = str(profile.get("tennisId", ""))
     calendar = table.get_item(Key={"PK": f"USER#{user}", "SK": "SYNC#CAL"}).get("Item", {})
+    backup = table.get_item(Key={"PK": "SYSTEM", "SK": "SYNC#BACKUP"}).get("Item", {})
     return {
         "tennisId": f"{tennis_id[:3]}•••{tennis_id[-4:]}" if tennis_id else None,  # masked
         "calendar": {"connected": "calendarUrl" in profile, **{k: calendar.get(k) for k in (*SYNC_FIELDS, "upcoming")}},
+        "backup": {k: backup.get(k) for k in ("status", "lastRunAt", "items")},
         "utr": profile.get("utrDoubles"),
         "ntrp": profile.get("ntrp"),
         "sync": {k: sync.get(k) for k in (*SYNC_FIELDS, "latestDate", "latestValue", "matchCount")},

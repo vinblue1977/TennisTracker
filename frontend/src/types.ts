@@ -38,6 +38,7 @@ export interface Profile {
   tennisId: string | null;
   utr?: number | null; // doubles, entered by hand
   ntrp?: number | null;
+  backup?: { status?: string; lastRunAt?: string; items?: number };
   calendar?: { connected: boolean; status?: string; lastRunAt?: string; upcoming?: number; consecutiveFailures?: number };
   sync: { status?: string; lastRunAt?: string; latestDate?: string; latestValue?: number; matchCount?: number; consecutiveFailures?: number };
 }

@@ -201,6 +201,9 @@ export function syncHealth(profile: Profile, matches: Match[], now = new Date())
   };
   const rows = [row('WTN sync', profile.sync, 8 * 24)];
   if (profile.calendar?.connected) rows.push(row('Calendar sync', profile.calendar, 1));
+  const backedUp = profile.backup?.lastRunAt;
+  if (!backedUp) rows.push({ label: 'Weekly backup', value: 'first one runs Sunday', ok: true });
+  else rows.push(row('Weekly backup', { status: 'ok', lastRunAt: backedUp }, 8 * 24));
   const last = matches.map(matchDate).sort().at(-1);
   rows.push({ label: 'Last match seen', value: last ? new Date(`${last}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'none yet', ok: true });
   return rows;

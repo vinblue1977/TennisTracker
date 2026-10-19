@@ -37,6 +37,8 @@ def test_writes_every_item_as_gzipped_json(aws) -> None:
     rating = next(i for i in saved["items"] if i["SK"].startswith("RATING"))
     assert rating["value"] == 25.5 and rating["n"] == 3
     assert next(i for i in saved["items"] if i["SK"].startswith("MATCH"))["tags"] == ["a", "b"]
+    status = aws.get_item(Key={"PK": "SYSTEM", "SK": "SYNC#BACKUP"})["Item"]
+    assert status["status"] == "ok" and status["items"] == 2 and "lastRunAt" in status
 
 
 def test_pages_through_a_large_table(aws) -> None:

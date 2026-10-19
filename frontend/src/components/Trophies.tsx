@@ -48,7 +48,10 @@ function TrophyForm({ form, onSave, onCancel, onDelete, extra }: { form: Form; o
         </select>
       </label>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span class="muted">Partner or note (optional)</span>
+        <span class="row muted" style={{ justifyContent: 'space-between' }}>
+          Partner or note (optional)
+          <span>{f.note.length}/200</span>
+        </span>
         <textarea rows={3} maxLength={200} placeholder="e.g. with Sam, 6-4 6-3" value={f.note} onInput={(e) => setF({ ...f, note: e.currentTarget.value })} />
       </label>
       {extra}
