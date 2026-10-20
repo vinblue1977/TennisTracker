@@ -19,5 +19,6 @@ TennisTrackerStack(
     termination_protection=True,
     description="iPhone-first tennis tracker: WTN history, matches, stats and reminders",
 )
+cdk.Tags.of(app).add("project", "tennis-tracker")  # activated cost allocation tag
 cdk.Aspects.of(app).add(AwsSolutionsChecks(verbose=True))
 app.synth()
