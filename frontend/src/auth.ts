@@ -1,5 +1,5 @@
 // Cognito managed login with authorization code + PKCE (ported from the Stocks app).
-// Tokens live in sessionStorage; the PKCE verifier is kept in localStorage by state for 10 minutes.
+// Tokens live in localStorage (stay signed in across restarts); the PKCE verifier is kept in localStorage by state for 10 minutes.
 import type { Config } from './config';
 
 const STORE = 'tt.tokens';
@@ -15,6 +15,7 @@ interface Tokens {
   expires_at: number;
 }
 
+let refreshing: Promise<Parameters<typeof save>[0]> | undefined; // single-flight refresh
 let cfg: Config | undefined; // set by initAuth (not in dev demo mode)
 
 const b64url = (bytes: ArrayBuffer | Uint8Array) =>
@@ -64,7 +65,7 @@ function takePkce(state: string): string | null {
 
 function load(): Tokens | null {
   try {
-    return JSON.parse(sessionStorage.getItem(STORE) ?? 'null');
+    return JSON.parse(localStorage.getItem(STORE) ?? 'null');
   } catch {
     return null;
   }
@@ -78,7 +79,11 @@ function save(t: { access_token: string; id_token?: string; refresh_token?: stri
     refresh_token: t.refresh_token ?? prev?.refresh_token,
     expires_at: Date.now() + (t.expires_in ?? 3600) * 1000,
   };
-  sessionStorage.setItem(STORE, JSON.stringify(tokens));
+  try {
+    localStorage.setItem(STORE, JSON.stringify(tokens));
+  } catch {
+    /* storage blocked: the session just won't persist */
+  }
 }
 
 async function tokenRequest(params: Record<string, string>) {
@@ -88,7 +93,7 @@ async function tokenRequest(params: Record<string, string>) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: cfg.clientId, ...params }),
   });
-  if (!res.ok) throw new Error(`Sign-in failed (${res.status}). Please try again.`);
+  if (!res.ok) throw Object.assign(new Error(`Sign-in failed (${res.status}). Please try again.`), { status: res.status });
   return res.json();
 }
 
@@ -112,7 +117,12 @@ export async function login(): Promise<void> {
 export const addPasskeyUrl = () => authUrl('/passkeys/add', { redirect_uri: redirectUri() });
 
 export function logout(): void {
-  sessionStorage.removeItem(STORE);
+  try {
+    sessionStorage.removeItem(STORE); // legacy location
+  } catch {
+    /* ignore */
+  }
+  localStorage.removeItem(STORE);
   location.assign(authUrl('/logout', { logout_uri: redirectUri() }));
 }
 
@@ -165,9 +175,13 @@ export async function getAccessToken(forceRefresh = false): Promise<string | nul
       return null;
     }
     try {
-      save(await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token }));
-    } catch {
-      sessionStorage.removeItem(STORE);
+      refreshing ??= tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token }).finally(() => (refreshing = undefined));
+      save(await refreshing);
+    } catch (e) {
+      // Only a rejected refresh token ends the session; a network blip keeps it.
+      const status = (e as { status?: number }).status ?? 0;
+      if (status < 400 || status >= 500) throw e;
+      localStorage.removeItem(STORE);
       await login();
       return null;
     }
