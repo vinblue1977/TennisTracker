@@ -242,7 +242,7 @@ export function recap(data: Pick<Data, 'matches' | 'ratings' | 'trophies'>, year
     year,
     wins,
     losses,
-    events: new Set(played.map((m) => m.event)).size,
+    events: new Set(played.map((m) => m.event).filter(Boolean)).size,
     partner: partner ?? null,
     upset: upset ? { gap: upset.upsetGap, partner: shortName(upset.partners[0]?.name ?? ''), date: matchDate(upset) } : null,
     longestWin: form(played).longestWin,

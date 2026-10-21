@@ -17,10 +17,10 @@ export async function recapPng(r: Recap): Promise<Blob> {
   g.addColorStop(1, '#173f2a');
   c.fillStyle = g;
   c.fillRect(0, 0, W, H);
-  const text = (s: string, x: number, y: number, font: string, color: string) => {
+  const text = (s: string, x: number, y: number, font: string, color: string, maxWidth?: number) => {
     c.font = font;
     c.fillStyle = color;
-    c.fillText(s, x, y);
+    c.fillText(s, x, y, maxWidth);
   };
   const display = (px: number) => `700 ${px}px "Barlow Condensed", sans-serif`;
   const body = (px: number) => `600 ${px}px Barlow, sans-serif`;
@@ -41,27 +41,28 @@ export async function recapPng(r: Recap): Promise<Blob> {
     c.beginPath();
     c.roundRect(x, y, 430, 220, 28);
     c.fill();
-    text(big, x + 30, y + 100, display(72), '#eef2ec');
-    text(small, x + 30, y + 160, body(28), '#b9d3c2');
+    text(big, x + 30, y + 100, display(72), '#eef2ec', 370);
+    text(small, x + 30, y + 160, body(28), '#b9d3c2', 370);
   });
   text('Tennis Tracker', 80, 1260, body(30), '#b9d3c2');
   if (r.wtn) {
     c.textAlign = 'right';
     text(`WTN ${r.wtn.from.toFixed(1)} → ${r.wtn.to.toFixed(1)}`, W - 80, 1260, body(30), '#b9d3c2');
+    c.textAlign = 'left';
   }
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('png failed'))), 'image/png'));
 }
 
-/** Share sheet where files are supported, else a download. */
+/** Share sheet where files are supported (or if it fails), else a download. */
 export async function shareRecap(blob: Blob, year: string): Promise<void> {
   const file = new File([blob], `season-${year}.png`, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file] });
+      return;
     } catch (e) {
-      if (!(e instanceof DOMException && e.name === 'AbortError')) throw e;
+      if (e instanceof DOMException && e.name === 'AbortError') return;
     }
-    return;
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

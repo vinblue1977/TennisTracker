@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 
 import { byYear, formatDate, playedDoubles, recap, winPct } from '../data';
 import { recapPng, shareRecap } from '../recapImage';
@@ -6,18 +6,23 @@ import type { Data } from '../types';
 
 export function Recap({ data }: { data: Data }) {
   const years = byYear(playedDoubles(data.matches)).map((y) => y.year);
-  const [year, setYear] = useState(years.at(-1) ?? '');
+  const [picked, setYear] = useState('');
+  const year = years.includes(picked) ? picked : (years.at(-1) ?? '');
   const [error, setError] = useState('');
+  const [png, setPng] = useState<Blob | null>(null);
   const r = recap(data, year);
+  // Built ahead of the tap: iOS drops the share sheet if the image is made after it.
+  useEffect(() => {
+    setPng(null);
+    if (!year) return;
+    let live = true;
+    recapPng(recap(data, year)).then((b) => live && setPng(b), () => live && setError('Could not make the image.'));
+    return () => {
+      live = false;
+    };
+  }, [data, year]);
   const trophies = r.winners + r.finalists;
-  const share = async () => {
-    setError('');
-    try {
-      await shareRecap(await recapPng(r), year);
-    } catch {
-      setError('Could not make the image.');
-    }
-  };
+  const share = () => png && shareRecap(png, year);
   return (
     <main class="screen">
       <a class="back" href="#/stats">
@@ -75,7 +80,7 @@ export function Recap({ data }: { data: Data }) {
               )}
             </div>
           </section>
-          <button class="button" type="button" onClick={share}>
+          <button class="button" type="button" disabled={!png} onClick={share}>
             Share image
           </button>
           {error && <p class="muted" role="alert">{error}</p>}
