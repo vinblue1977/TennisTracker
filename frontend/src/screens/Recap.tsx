@@ -14,6 +14,7 @@ export function Recap({ data }: { data: Data }) {
   // Built ahead of the tap: iOS drops the share sheet if the image is made after it.
   useEffect(() => {
     setPng(null);
+    setError('');
     if (!year) return;
     let live = true;
     recapPng(recap(data, year)).then((b) => live && setPng(b), () => live && setError('Could not make the image.'));
@@ -22,7 +23,7 @@ export function Recap({ data }: { data: Data }) {
     };
   }, [data, year]);
   const trophies = r.winners + r.finalists;
-  const share = () => png && shareRecap(png, year);
+  const share = () => png && shareRecap(png, year).catch(() => setError('Could not share the image.'));
   return (
     <main class="screen">
       <a class="back" href="#/stats">
