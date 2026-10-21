@@ -50,8 +50,31 @@ export function record(matches: Match[]): { wins: number; losses: number } {
 const LEVELS: Record<string, string> = { LOC: 'Local', DIS: 'District', REC: 'Recreational' };
 export const levelName = (code: string | null | undefined) => (code ? (LEVELS[code] ?? code) : '');
 
-/** A match tiebreak is reported as a one-game set (1-0) that ends the match; a 1-0 first set is a retirement. */
-export const isMatchTiebreak = (s: SetScore, i: number, sets: SetScore[]) => i > 0 && i === sets.length - 1 && s.mine + s.theirs === 1;
+const SET = /^(\d+)-(\d+)(?:\((\d+)(?:-(\d+))?\))?$/;
+
+/** Sets from the synced data, else read from the score text (your side first) of a match entered by hand. */
+export function matchSets(m: Match): SetScore[] {
+  if (m.sets?.length) return m.sets;
+  const text = (m.score || '').replace(/[–—]/g, '-').replace(/,/g, ' ').replace(/\s+\(/g, '(').trim();
+  const sets: SetScore[] = [];
+  for (const part of text.split(/\s+/)) {
+    const x = SET.exec(part);
+    if (!x) return []; // def, ret, notes: don't guess
+    const [mine, theirs] = [+(x[1] ?? 0), +(x[2] ?? 0)];
+    let tiebreak: SetScore['tiebreak'] = null;
+    if (x[3]) {
+      const loser = +x[3];
+      const winner = x[4] ? +x[4] : Math.max(7, loser + 2); // one number: the loser's points
+      tiebreak = x[4] ? [loser, winner] : mine > theirs ? [winner, loser] : [loser, winner];
+    }
+    sets.push({ mine, theirs, tiebreak });
+  }
+  return sets;
+}
+
+/** A match tiebreak ends the match, written 1-0 (WTN) or 10-7; a 1-0 first set is a retirement. */
+export const isMatchTiebreak = (s: SetScore, i: number, sets: SetScore[]) =>
+  i > 0 && i === sets.length - 1 && (s.mine + s.theirs === 1 || Math.max(s.mine, s.theirs) >= 10);
 
 /** Games and sets from your side. A match tiebreak counts as a set but not as games. */
 export function setTotals(sets: SetScore[]): { games: [number, number]; sets: [number, number] } {
@@ -250,7 +273,7 @@ export function recap(data: Pick<Data, 'matches' | 'ratings' | 'trophies'>, year
   const upset = played
     .filter((m) => m.won && m.upsetGap !== null)
     .sort((a, b) => (b.upsetGap ?? 0) - (a.upsetGap ?? 0))[0];
-  const scored = played.filter((m) => m.sets?.length).map((m) => ({ m, g: setTotals(m.sets ?? []).games }));
+  const scored = played.map((m) => ({ m, g: setTotals(matchSets(m)).games })).filter(({ g }) => g[0] + g[1] > 0);
   const total = scored.reduce((n, { g }) => n + g[0] + g[1], 0);
   const share = ({ g }: (typeof scored)[number]) => g[0] / (g[0] + g[1]);
   const closest = scored

@@ -17,7 +17,7 @@ const writeDraft = (id: string, text: string | null) => {
   }
 };
 
-import { formatDate, isMatchTiebreak, levelName, matchDate, ratingHistory, setTotals, shortName, teamAverage, wtnAfter } from '../data';
+import { formatDate, isMatchTiebreak, levelName, matchDate, matchSets, ratingHistory, setTotals, shortName, teamAverage, wtnAfter } from '../data';
 import { api } from '../api';
 import { MatchForm } from '../components/MatchForm';
 import { forOwner } from '../photos';
@@ -47,6 +47,7 @@ export function MatchDetail({ data, id, onSave, onPhotos, onMatches }: Props) {
   }
   const points = ratingHistory(data.ratings, data.matches);
   const after = wtnAfter(points, m);
+  const sets = matchSets(m);
   const save = async (nextNote: string, starred: boolean) => {
     setStatus('saving');
     try {
@@ -116,7 +117,7 @@ export function MatchDetail({ data, id, onSave, onPhotos, onMatches }: Props) {
         </span>
       </section>
 
-      {m.sets && m.sets.length > 0 && <Sets sets={m.sets} />}
+      {sets.length > 0 && <Sets sets={sets} />}
 
       <section class="list" aria-label="Players and WTN going in">
         <Team label="Your team" players={m.partners} average={null} you />
