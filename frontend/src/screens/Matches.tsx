@@ -105,7 +105,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
         <input type="search" placeholder="Search partner, opponent, event" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
       </label>
       {levels.length > 1 && (
-        <div class="chips">
+        <div class="chips one-row">
           {['', ...levels].map((l) => (
             <button key={l} type="button" class={`chip${l === level ? ' on' : ''}`} aria-pressed={l === level} onClick={() => setLevel(l)}>
               {l ? levelName(l) : 'All'}

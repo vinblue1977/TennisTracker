@@ -179,6 +179,10 @@ a.card.tap { display: flex; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { min-height: 44px; padding: 0 16px; border: 0; border-radius: 99px; background: var(--card); font-weight: 600; cursor: pointer; }
 .chip.on { background: var(--accent); color: var(--on-accent); }
+/* One row that scrolls sideways on a narrow phone instead of wrapping. */
+.chips.one-row { flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chips.one-row::-webkit-scrollbar { display: none; }
+.chips.one-row .chip { flex: none; padding: 0 12px; }
 .recap { background: linear-gradient(160deg, #1d5a3a, var(--hero)); border: 1px solid var(--hero-line); border-radius: 22px; padding: 22px 20px; display: flex; flex-direction: column; gap: 16px; }
 .recap-year { font: 700 18px var(--display); letter-spacing: 2px; color: var(--accent); }
 .recap-big { font: 700 84px/0.95 var(--display); }
