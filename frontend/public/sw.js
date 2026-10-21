@@ -1,6 +1,20 @@
 // Service worker: shows push notifications, and keeps the app's own files so it opens offline. Data and settings are
 // never cached here (they come from the API and /config.json; the app keeps its own offline copy).
 const FILES = 'tt-files-v1';
+const SHELL = ['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
+
+/** Keep the page, the files it names and the icons; drop scripts and styles from older deploys. */
+async function keepShell(html) {
+  const cache = await caches.open(FILES);
+  const named = [...html.matchAll(/\/assets\/[\w.-]+/g)].map((m) => m[0]);
+  for (const request of await cache.keys()) {
+    const path = new URL(request.url).pathname;
+    if (/\.(js|css)$/.test(path) && path.startsWith('/assets/') && !named.includes(path)) await cache.delete(request);
+  }
+  await cache.addAll([...named, ...SHELL]).catch(() => undefined);
+}
+
+const isAsset = (res) => res.ok && !(res.headers.get('content-type') || '').includes('text/html'); // never keep the app's fallback page as a script
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -10,20 +24,31 @@ self.addEventListener('fetch', (event) => {
     // The page: always try the network first so a new deploy shows straight away.
     event.respondWith(
       fetch(request)
-        .then(async (res) => {
-          if (res.ok) (await caches.open(FILES)).put('/', res.clone());
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            event.waitUntil(
+              (async () => {
+                await (await caches.open(FILES)).put('/', copy.clone());
+                await keepShell(await copy.text());
+              })().catch(() => undefined),
+            );
+          }
           return res;
         })
         .catch(async () => (await caches.match('/')) || Response.error()),
     );
-  } else if (url.pathname.startsWith('/assets/')) {
+  } else if (url.pathname.startsWith('/assets/') || SHELL.includes(url.pathname)) {
     // Hashed file names never change content: cache first.
     event.respondWith(
       caches.match(request).then(
         (hit) =>
           hit ||
-          fetch(request).then(async (res) => {
-            if (res.ok) (await caches.open(FILES)).put(request, res.clone());
+          fetch(request).then((res) => {
+            if (isAsset(res)) {
+              const copy = res.clone();
+              event.waitUntil(caches.open(FILES).then((cache) => cache.put(request, copy)).catch(() => undefined));
+            }
             return res;
           }),
       ),
@@ -49,16 +74,7 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) =>
-  event.waitUntil(
-    (async () => {
-      // Drop hashed files from older deploys; the current page re-adds what it uses.
-      const cache = await caches.open(FILES);
-      for (const request of await cache.keys()) if (new URL(request.url).pathname.startsWith('/assets/')) await cache.delete(request);
-      await self.clients.claim();
-    })(),
-  ),
-);
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

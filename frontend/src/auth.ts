@@ -184,6 +184,7 @@ export async function getAccessToken(forceRefresh = false): Promise<string | nul
       const status = (e as { status?: number }).status ?? 0;
       if (status < 400 || status >= 500) throw e;
       localStorage.removeItem(STORE);
+      clearOffline(); // the next person to sign in must not see this copy
       await login();
       return null;
     }

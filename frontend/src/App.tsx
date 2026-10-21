@@ -63,23 +63,25 @@ async function loadData(): Promise<Data | null> {
   try {
     return { ...(await fetchAll()), vapidKey };
   } catch (e) {
-    const kept = readSnapshot(); // network or API down: show what was loaded last time
+    // Server unreachable or failing: show what was loaded last time. A rejected sign-in (401/403) is not that.
+    const kept = e instanceof TypeError || /\(5\d\d\)/.test(String(e)) ? readSnapshot() : null;
     if (!kept) throw e;
     return { ...kept.data, vapidKey, offlineAt: kept.at };
   }
 }
 
 async function fetchAll(): Promise<Omit<Data, 'vapidKey'>> {
+  let complete = true; // a silent fallback below must not overwrite the kept copy
   const [profile, ratings, matches, upcoming, trophies, photos] = await Promise.all([
     api.profile(),
     api.ratings(),
     api.matches(),
     api.upcoming(),
-    api.trophies().catch(() => ({ trophies: [], suggestions: [] })),
-    api.photos().catch(() => []),
+    api.trophies().catch(() => ((complete = false), { trophies: [], suggestions: [] })),
+    api.photos().catch(() => ((complete = false), [])),
   ]);
   const all = { profile, ratings, matches, upcoming, trophies, photos };
-  saveSnapshot(all);
+  if (complete && !isMock()) saveSnapshot(all);
   return all;
 }
 
@@ -139,7 +141,13 @@ export function App() {
   const offline = state.kind === 'ready' && state.data.offlineAt !== undefined;
   useEffect(() => {
     // Back online: replace the kept copy with fresh data.
-    const onOnline = () => void refresh().catch(() => undefined);
+    // The connection may not be usable the moment the browser says online: try a few times.
+    const onOnline = async () => {
+      for (let i = 0; i < 4; i++) {
+        if (await refresh().then(() => true, () => false)) return;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    };
     if (offline) window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
   }, [offline]);
@@ -255,7 +263,7 @@ export function App() {
     <div class="page">
       {data.offlineAt !== undefined && (
         <p class="offline-note" role="status">
-          Offline: showing data from {formatTime(new Date(data.offlineAt))}. <button class="link" type="button" onClick={() => void refresh().catch(() => undefined)}>Retry</button>
+          Can’t reach the server: showing data from {formatTime(new Date(data.offlineAt))}. Changes need a connection. <button class="link" type="button" onClick={() => void refresh().catch(() => undefined)}>Retry</button>
         </p>
       )}
       {screen}
