@@ -39,7 +39,8 @@ export async function recapPng(r: Recap): Promise<Blob> {
     const y = 680 + Math.floor(i / 2) * 250;
     c.fillStyle = 'rgba(0,0,0,0.22)';
     c.beginPath();
-    c.roundRect(x, y, 430, 220, 28);
+    if (c.roundRect) c.roundRect(x, y, 430, 220, 28);
+    else c.rect(x, y, 430, 220); // iOS before 16
     c.fill();
     text(big, x + 30, y + 100, display(72), '#eef2ec', 370);
     text(small, x + 30, y + 160, body(28), '#b9d3c2', 370);

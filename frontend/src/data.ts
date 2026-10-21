@@ -73,7 +73,7 @@ export function form(matches: Match[], show = 5): Form {
   }
   const ten = results.slice(-10);
   const wins = ten.filter(Boolean).length;
-  return { last: results.slice(-show), streak, longestWin, recent: { wins, losses: ten.length - wins } };
+  return { last: results.slice(-show).reverse(), streak, longestWin, recent: { wins, losses: ten.length - wins } };
 }
 
 /** The first rating on or after the match date: your WTN after that match. */
@@ -189,7 +189,7 @@ export function ago(iso: string, now = new Date()): string {
   return `${Math.round(ms / (24 * HOUR))} days ago`;
 }
 
-/** Are the syncs alive? WTN runs Wed and Thu (so over 8 days is late); the calendar runs every 15 minutes (over 1 hour is late). */
+/** Are the syncs alive? The calendar runs every 15 minutes (over 1 hour is late). */
 export function syncHealth(profile: Profile, matches: Match[], now = new Date()): HealthRow[] {
   const age = (iso?: string) => (iso ? now.getTime() - new Date(iso).getTime() : Infinity);
   const row = (label: string, s: { status?: string; lastRunAt?: string; consecutiveFailures?: number }, lateHours: number): HealthRow => {
@@ -199,7 +199,7 @@ export function syncHealth(profile: Profile, matches: Match[], now = new Date())
     const note = failing ? ` · failing (${s.consecutiveFailures ?? 1} in a row)` : late ? ' · late' : '';
     return { label, value: when + note, ok: !failing && !late };
   };
-  const rows = [row('WTN sync', profile.sync, 8 * 24)];
+  const rows: HealthRow[] = [];
   if (profile.calendar?.connected) rows.push(row('Calendar sync', profile.calendar, 1));
   const backedUp = profile.backup?.lastRunAt;
   if (!backedUp) rows.push({ label: 'Weekly backup', value: 'first one runs Sunday', ok: true });
