@@ -6,7 +6,9 @@ from typing import Any
 
 MAX_PER_OWNER = 10
 MAX_BYTES = 3_000_000
+MAX_THUMB_BYTES = 400_000
 LINK_SECONDS = 900
+CACHE_CONTROL = "private, max-age=31536000, immutable"  # stored with each object; photos are never edited in place
 JPEG_START = b"\xff\xd8\xff"
 PHOTO_ID = re.compile(r"^p[0-9a-f]{12}$")
 OWNER = re.compile(r"^(match|trophy):([\w.:-]{1,80})$")
@@ -23,6 +25,15 @@ def object_key(user: str, photo_id: str) -> str:
 def incoming_key(user: str, photo_id: str) -> str:
     """Where an upload lands until it is confirmed; the bucket expires this prefix after a day."""
     return f"incoming/{user}/{photo_id}.jpg"
+
+
+def thumb_key(user: str, photo_id: str) -> str:
+    """A smaller copy for cards and tiles, so lists don't download full-size photos."""
+    return f"{user}/{photo_id}_t.jpg"
+
+
+def incoming_thumb_key(user: str, photo_id: str) -> str:
+    return f"incoming/{user}/{photo_id}_t.jpg"
 
 
 def key(user: str, owner: str, photo_id: str) -> dict[str, str]:

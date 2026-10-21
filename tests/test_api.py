@@ -407,3 +407,16 @@ def test_wtn_sync_now_starts_one_user_and_waits_a_minute_between_runs(table, mon
     table.delete_item(Key={"PK": "USER#owner", "SK": "PROFILE"})
     table.put_item(Item={"PK": "USER#owner", "SK": "PROFILE"})
     assert call("POST /me/wtn-sync")[0] == 400  # no TennisID
+
+
+def test_photo_thumbnail_is_optional_and_removed_with_the_photo(bucket) -> None:
+    plain = _photo(bucket)[1]["id"]
+    status, signed = call("POST /me/photos/upload-url", body=json.dumps({"owner": "match:wtn:m1"}))
+    assert status == 200 and signed["thumb"]["fields"]["Cache-Control"].startswith("private")
+    bucket.put_object(Bucket="photos", Key=f"incoming/owner/{signed['id']}.jpg", Body=b"\xff\xd8\xff\xe0jpeg")
+    bucket.put_object(Bucket="photos", Key=f"incoming/owner/{signed['id']}_t.jpg", Body=b"\xff\xd8\xff\xe0thumb")
+    assert call("POST /me/photos", body=json.dumps({"owner": "match:wtn:m1", "id": signed["id"]}))[0] == 200
+    by_id = {p["id"]: p for p in call("GET /me/photos")[1]["photos"]}
+    assert by_id[plain]["thumb"] is None and f"{signed['id']}_t.jpg" in by_id[signed["id"]]["thumb"]
+    assert call("DELETE /me/photos/{id}", match_id=signed["id"])[0] == 200
+    assert "Contents" not in bucket.list_objects_v2(Bucket="photos", Prefix=f"owner/{signed['id']}")

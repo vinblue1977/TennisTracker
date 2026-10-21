@@ -208,8 +208,11 @@ def _s3() -> Any:
 
 def _delete_photos(table: Any, user: str, items: list[dict[str, Any]]) -> None:
     for item in items:
-        _s3().delete_object(Bucket=os.environ["PHOTO_BUCKET"], Key=photos.object_key(user, photos.photo_id_of(item)))
-        table.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+        table.delete_item(
+            Key={"PK": item["PK"], "SK": item["SK"]}
+        )  # first: a stray private object is harmless, a broken row is not
+        for name in (photos.object_key, photos.thumb_key):
+            _s3().delete_object(Bucket=os.environ["PHOTO_BUCKET"], Key=name(user, photos.photo_id_of(item)))
 
 
 def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) -> dict[str, Any]:
@@ -218,22 +221,27 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
     if route == "GET /me/photos":
         cover = photos.covers(mine)
         s3 = _s3()
+
+        def link(object_key: str) -> str:
+            return s3.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": bucket,
+                    "Key": object_key,
+                    "ResponseContentType": "image/jpeg",
+                    "ResponseContentDisposition": "inline",
+                },
+                ExpiresIn=photos.LINK_SECONDS,
+            )
+
         shelf = [
             {
                 "id": photos.photo_id_of(i),
                 "owner": photos.owner_of(i),
                 "cover": photos.photo_id_of(i) in cover,
                 "focus": photos.focus_of(i),
-                "url": s3.generate_presigned_url(
-                    "get_object",
-                    Params={
-                        "Bucket": bucket,
-                        "Key": photos.object_key(user, photos.photo_id_of(i)),
-                        "ResponseContentType": "image/jpeg",
-                        "ResponseContentDisposition": "inline",
-                    },
-                    ExpiresIn=photos.LINK_SECONDS,
-                ),
+                "url": link(photos.object_key(user, photos.photo_id_of(i))),
+                "thumb": link(photos.thumb_key(user, photos.photo_id_of(i))) if i.get("thumb") else None,
             }
             for i in mine
         ]
@@ -284,11 +292,26 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
         post = _s3().generate_presigned_post(
             Bucket=bucket,
             Key=photos.incoming_key(user, new),
-            Fields={"Content-Type": "image/jpeg"},
-            Conditions=[{"Content-Type": "image/jpeg"}, ["content-length-range", 1, photos.MAX_BYTES]],
+            Fields={"Content-Type": "image/jpeg", "Cache-Control": photos.CACHE_CONTROL},
+            Conditions=[
+                {"Content-Type": "image/jpeg"},
+                {"Cache-Control": photos.CACHE_CONTROL},
+                ["content-length-range", 1, photos.MAX_BYTES],
+            ],
             ExpiresIn=300,
         )
-        return _json(200, {"id": new, **post})
+        thumb = _s3().generate_presigned_post(
+            Bucket=bucket,
+            Key=photos.incoming_thumb_key(user, new),
+            Fields={"Content-Type": "image/jpeg", "Cache-Control": photos.CACHE_CONTROL},
+            Conditions=[
+                {"Content-Type": "image/jpeg"},
+                {"Cache-Control": photos.CACHE_CONTROL},
+                ["content-length-range", 1, photos.MAX_THUMB_BYTES],
+            ],
+            ExpiresIn=300,
+        )
+        return _json(200, {"id": new, **post, "thumb": thumb})
     new = data.get("id") if isinstance(data, dict) else None
     if route != "POST /me/photos" or not (isinstance(new, str) and photos.PHOTO_ID.match(new)):
         return _json(400, {"error": "bad photo id"})
@@ -304,7 +327,17 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
         return _json(400, {"error": "not a JPEG"})
     s3.copy_object(Bucket=bucket, Key=photos.object_key(user, new), CopySource={"Bucket": bucket, "Key": pending})
     s3.delete_object(Bucket=bucket, Key=pending)
-    table.put_item(Item={**photos.key(user, owner, new), "at": datetime.now(UTC).isoformat()})
+    pending_thumb = photos.incoming_thumb_key(user, new)
+    try:  # optional: older clients upload no thumbnail
+        has_thumb = s3.get_object(Bucket=bucket, Key=pending_thumb, Range="bytes=0-2")["Body"].read() == photos.JPEG_START
+    except ClientError:
+        has_thumb = False
+    if has_thumb:
+        s3.copy_object(Bucket=bucket, Key=photos.thumb_key(user, new), CopySource={"Bucket": bucket, "Key": pending_thumb})
+    s3.delete_object(Bucket=bucket, Key=pending_thumb)
+    table.put_item(
+        Item={**photos.key(user, owner, new), "at": datetime.now(UTC).isoformat(), **({"thumb": True} if has_thumb else {})}
+    )
     return _json(200, {"id": new, "owner": owner})
 
 

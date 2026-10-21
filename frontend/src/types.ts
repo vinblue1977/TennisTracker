@@ -65,6 +65,7 @@ export interface Photo {
   cover: boolean;
   focus: number; // 0-100: how far down a tall photo the card crop starts
   url: string; // signed link, valid for 15 minutes
+  thumb: string | null; // smaller copy for cards and tiles; null for photos added before thumbnails
 }
 
 export interface Data {
