@@ -6,6 +6,7 @@ export const MAX_PER_OWNER = 10;
 const MAX_SIDE = 1600;
 const THUMB_SIDE = 960; // a full-width card on a 3x phone
 const MAX_BYTES = 3_000_000;
+const MAX_THUMB_BYTES = 400_000; // keep in step with the server
 
 /** Scale down to fit MAX_SIDE on the long edge; never scale up. */
 export function fitSize(width: number, height: number, max = MAX_SIDE): { width: number; height: number } {
@@ -16,7 +17,7 @@ export function fitSize(width: number, height: number, max = MAX_SIDE): { width:
 export const forOwner = (photos: Photo[], owner: string) => photos.filter((p) => p.owner === owner).sort((a, b) => Number(b.cover) - Number(a.cover) || a.id.localeCompare(b.id));
 
 /** Re-drawing on a canvas turns HEIC into JPEG and drops the location data. */
-export async function toJpeg(file: File, side = MAX_SIDE, quality = 0.85): Promise<Blob> {
+export async function toJpeg(file: File, side = MAX_SIDE, quality = 0.85, maxBytes = MAX_BYTES): Promise<Blob> {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const { width, height } = fitSize(bitmap.width, bitmap.height, side);
   const canvas = document.createElement('canvas');
@@ -27,7 +28,7 @@ export async function toJpeg(file: File, side = MAX_SIDE, quality = 0.85): Promi
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-  if (!blob || blob.size > MAX_BYTES) throw new Error('That photo is too large.');
+  if (!blob || blob.size > maxBytes) throw new Error('That photo is too large.');
   return blob;
 }
 
@@ -44,7 +45,7 @@ export async function uploadPhoto(owner: string, file: File): Promise<void> {
   const res = await post(signed, blob);
   if (!res.ok) throw new Error(`Upload failed (${res.status})`);
   try {
-    await post(signed.thumb, await toJpeg(file, THUMB_SIDE, 0.8)); // best effort: without it the card just loads the full photo
+    if (signed.thumb) await post(signed.thumb, await toJpeg(file, THUMB_SIDE, 0.8, MAX_THUMB_BYTES)); // best effort: without it the card loads the full photo
   } catch {
     /* ignore */
   }

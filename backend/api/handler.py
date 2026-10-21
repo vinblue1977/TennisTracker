@@ -208,9 +208,11 @@ def _s3() -> Any:
 
 def _delete_photos(table: Any, user: str, items: list[dict[str, Any]]) -> None:
     for item in items:
+        table.delete_item(
+            Key={"PK": item["PK"], "SK": item["SK"]}
+        )  # first: a stray private object is harmless, a broken row is not
         for name in (photos.object_key, photos.thumb_key):
             _s3().delete_object(Bucket=os.environ["PHOTO_BUCKET"], Key=name(user, photos.photo_id_of(item)))
-        table.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
 
 
 def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) -> dict[str, Any]:
@@ -325,15 +327,14 @@ def _photos(table: Any, user: str, route: str, photo_id: str, body: str | None) 
         return _json(400, {"error": "not a JPEG"})
     s3.copy_object(Bucket=bucket, Key=photos.object_key(user, new), CopySource={"Bucket": bucket, "Key": pending})
     s3.delete_object(Bucket=bucket, Key=pending)
-    has_thumb = False
     pending_thumb = photos.incoming_thumb_key(user, new)
     try:  # optional: older clients upload no thumbnail
         has_thumb = s3.get_object(Bucket=bucket, Key=pending_thumb, Range="bytes=0-2")["Body"].read() == photos.JPEG_START
-        if has_thumb:
-            s3.copy_object(Bucket=bucket, Key=photos.thumb_key(user, new), CopySource={"Bucket": bucket, "Key": pending_thumb})
-        s3.delete_object(Bucket=bucket, Key=pending_thumb)
     except ClientError:
         has_thumb = False
+    if has_thumb:
+        s3.copy_object(Bucket=bucket, Key=photos.thumb_key(user, new), CopySource={"Bucket": bucket, "Key": pending_thumb})
+    s3.delete_object(Bucket=bucket, Key=pending_thumb)
     table.put_item(
         Item={**photos.key(user, owner, new), "at": datetime.now(UTC).isoformat(), **({"thumb": True} if has_thumb else {})}
     )
