@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, recap, teamAverage, wtnAfter, levelName, setTotals, matchSets } from './data';
+import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, recap, teamAverage, wtnAfter, levelName, setTotals, matchSets, tiebreakShown } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -235,15 +235,25 @@ describe('sets', () => {
     const typed = (score: string): Match => ({ ...match('2026-08-31', false), score });
     expect(matchSets(typed('4-6 6-4 1-0'))).toEqual([set(4, 6), set(6, 4), set(1, 0)]);
     expect(matchSets(typed('3-6 5-2(7-5)'))[1]).toEqual({ mine: 5, theirs: 2, tiebreak: [7, 5] });
-    expect(matchSets(typed('7-6(5) 6-4'))[0]).toEqual({ mine: 7, theirs: 6, tiebreak: [7, 5] });
-    expect(matchSets(typed('6-7(5) 6-4'))[0]).toEqual({ mine: 6, theirs: 7, tiebreak: [5, 7] });
-    expect(matchSets(typed('6–4, 7-6 (5)'))).toEqual([set(6, 4), { mine: 7, theirs: 6, tiebreak: [7, 5] }]); // commas, en dash, spaced bracket
+    expect(matchSets(typed('7-6(5) 6-4'))[0]).toEqual({ mine: 7, theirs: 6, tiebreak: null, bracket: 5 }); // kept as typed, no invented score
+    expect(matchSets(typed('7-6(7) 6-4'))[0]).toMatchObject({ tiebreak: null, bracket: 7 });
+    expect(matchSets(typed('6–4, 7-6 (5)'))).toEqual([set(6, 4), { mine: 7, theirs: 6, tiebreak: null, bracket: 5 }]); // commas, en dash, spaced bracket
     expect(matchSets(typed('6-0 6-0 def'))).toEqual([]);
     expect(matchSets(typed(''))).toEqual([]);
     expect(matchSets({ ...typed('6-0 6-0'), sets: [set(1, 2)] })).toEqual([set(1, 2)]); // synced data wins
   });
   it('treats a 10-point match tiebreak as a set, not games', () => {
     expect(setTotals([set(6, 4), set(3, 6), set(10, 7)])).toEqual({ games: [9, 10], sets: [2, 1] });
+  });
+  it('never changes a result: the record and recap follow the stored result, not the score text', () => {
+    const lost = { ...match('2025-05-01', false), score: '6-0 6-0' }; // score reads like a win, stored as a loss
+    const won = { ...match('2025-05-02', true), score: '0-6 0-6', sets: [set(0, 6), set(0, 6)] }; // and the reverse
+    expect(record([lost, won])).toEqual({ wins: 1, losses: 1 });
+    expect(recap({ matches: [lost, won], ratings: [], trophies: { trophies: [], suggestions: [] } }, '2025')).toMatchObject({ wins: 1, losses: 1 });
+  });
+  it('shows the loser\'s tiebreak points, or a lone typed number as typed', () => {
+    expect([{ ...set(7, 6), tiebreak: [7, 5] as [number, number] }, { ...set(6, 7), tiebreak: [5, 7] as [number, number] }].map(tiebreakShown)).toEqual([5, 5]);
+    expect([{ ...set(7, 6), bracket: 7 }, { ...set(7, 6), bracket: 0 }, set(6, 4)].map(tiebreakShown)).toEqual([7, 0, null]);
   });
   it('names ITF levels and falls back to the raw code', () => {
     expect([levelName('LOC'), levelName('DIS'), levelName('REC'), levelName('XYZ'), levelName(null)]).toEqual(['Local', 'District', 'Recreational', 'XYZ', '']);
