@@ -68,6 +68,9 @@ export function matchSets(m: Match): SetScore[] {
   return sets;
 }
 
+/** The number shown in brackets after a set: the loser's tiebreak points, or a lone number as typed. */
+export const tiebreakShown = (s: SetScore): number | null => (s.tiebreak ? Math.min(...s.tiebreak) : (s.bracket ?? null));
+
 /** A match tiebreak ends the match, written 1-0 (WTN) or 10-7; a 1-0 first set is a retirement. */
 export const isMatchTiebreak = (s: SetScore, i: number, sets: SetScore[]) =>
   i > 0 && i === sets.length - 1 && (s.mine + s.theirs === 1 || Math.max(s.mine, s.theirs) >= 10);

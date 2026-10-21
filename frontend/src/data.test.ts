@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, recap, teamAverage, wtnAfter, levelName, setTotals, matchSets } from './data';
+import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, recap, teamAverage, wtnAfter, levelName, setTotals, matchSets, tiebreakShown } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -250,6 +250,10 @@ describe('sets', () => {
     const won = { ...match('2025-05-02', true), score: '0-6 0-6', sets: [set(0, 6), set(0, 6)] }; // and the reverse
     expect(record([lost, won])).toEqual({ wins: 1, losses: 1 });
     expect(recap({ matches: [lost, won], ratings: [], trophies: { trophies: [], suggestions: [] } }, '2025')).toMatchObject({ wins: 1, losses: 1 });
+  });
+  it('shows the loser\'s tiebreak points, or a lone typed number as typed', () => {
+    expect([{ ...set(7, 6), tiebreak: [7, 5] as [number, number] }, { ...set(6, 7), tiebreak: [5, 7] as [number, number] }].map(tiebreakShown)).toEqual([5, 5]);
+    expect([{ ...set(7, 6), bracket: 7 }, { ...set(7, 6), bracket: 0 }, set(6, 4)].map(tiebreakShown)).toEqual([7, 0, null]);
   });
   it('names ITF levels and falls back to the raw code', () => {
     expect([levelName('LOC'), levelName('DIS'), levelName('REC'), levelName('XYZ'), levelName(null)]).toEqual(['Local', 'District', 'Recreational', 'XYZ', '']);

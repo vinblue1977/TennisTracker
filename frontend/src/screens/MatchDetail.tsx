@@ -17,7 +17,7 @@ const writeDraft = (id: string, text: string | null) => {
   }
 };
 
-import { formatDate, isMatchTiebreak, levelName, matchDate, matchSets, ratingHistory, setTotals, shortName, teamAverage, wtnAfter } from '../data';
+import { formatDate, isMatchTiebreak, levelName, matchDate, matchSets, ratingHistory, setTotals, shortName, tiebreakShown, teamAverage, wtnAfter } from '../data';
 import { api } from '../api';
 import { MatchForm } from '../components/MatchForm';
 import { forOwner } from '../photos';
@@ -173,7 +173,7 @@ function Sets({ sets }: { sets: NonNullable<Match['sets']> }) {
           </div>
           <span class="num set-score">
             {s.mine}–{s.theirs}
-            {(s.tiebreak || s.bracket !== undefined) && <small>({s.tiebreak ? Math.min(...s.tiebreak) : s.bracket})</small>}
+            {tiebreakShown(s) !== null && <small>({tiebreakShown(s)})</small>}
           </span>
         </div>
       ))}
