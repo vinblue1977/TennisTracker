@@ -1,6 +1,7 @@
 // Cognito managed login with authorization code + PKCE (ported from the Stocks app).
 // Tokens live in localStorage (stay signed in across restarts); the PKCE verifier is kept in localStorage by state for 10 minutes.
 import type { Config } from './config';
+import { clearOffline } from './offline';
 
 const STORE = 'tt.tokens';
 const PKCE = 'tt.pkce.';
@@ -123,6 +124,7 @@ export function logout(): void {
     /* ignore */
   }
   localStorage.removeItem(STORE);
+  clearOffline();
   location.assign(authUrl('/logout', { logout_uri: redirectUri() }));
 }
 

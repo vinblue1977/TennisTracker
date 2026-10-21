@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, initApi } from './api';
 import { initAuth } from './auth';
 import { TabBar } from './components/TabBar';
+import { formatTime } from './data';
 import { loadConfig } from './config';
 import { isMock } from './env';
+import { readSnapshot, saveSnapshot } from './offline';
 import { Home } from './screens/Home';
 import { MatchDetail } from './screens/MatchDetail';
 import { Matches } from './screens/Matches';
@@ -57,7 +59,14 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
-  return { ...(await fetchAll()), vapidKey: config.vapidPublicKey ?? '' };
+  const vapidKey = config.vapidPublicKey ?? '';
+  try {
+    return { ...(await fetchAll()), vapidKey };
+  } catch (e) {
+    const kept = readSnapshot(); // network or API down: show what was loaded last time
+    if (!kept) throw e;
+    return { ...kept.data, vapidKey, offlineAt: kept.at };
+  }
 }
 
 async function fetchAll(): Promise<Omit<Data, 'vapidKey'>> {
@@ -69,7 +78,9 @@ async function fetchAll(): Promise<Omit<Data, 'vapidKey'>> {
     api.trophies().catch(() => ({ trophies: [], suggestions: [] })),
     api.photos().catch(() => []),
   ]);
-  return { profile, ratings, matches, upcoming, trophies, photos };
+  const all = { profile, ratings, matches, upcoming, trophies, photos };
+  saveSnapshot(all);
+  return all;
 }
 
 export function App() {
@@ -125,6 +136,13 @@ export function App() {
     if (ready && !isMock()) document.addEventListener('visibilitychange', onBack);
     return () => document.removeEventListener('visibilitychange', onBack);
   }, [ready]);
+  const offline = state.kind === 'ready' && state.data.offlineAt !== undefined;
+  useEffect(() => {
+    // Back online: replace the kept copy with fresh data.
+    const onOnline = () => void refresh().catch(() => undefined);
+    if (offline) window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [offline]);
   useEffect(() => {
     if (!ready || isMock()) return;
     const visible = () => document.visibilityState === 'visible';
@@ -235,6 +253,11 @@ export function App() {
   );
   return (
     <div class="page">
+      {data.offlineAt !== undefined && (
+        <p class="offline-note" role="status">
+          Offline: showing data from {formatTime(new Date(data.offlineAt))}. <button class="link" type="button" onClick={() => void refresh().catch(() => undefined)}>Retry</button>
+        </p>
+      )}
       {screen}
       <TabBar active={detailId || withName ? '#/matches' : hash === '#/stats' || hash === '#/recap' ? '#/' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
     </div>

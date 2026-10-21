@@ -76,4 +76,5 @@ export interface Data {
   upcoming: Upcoming[];
   photos: Photo[];
   vapidKey?: string; // Web Push public key, from config.json
+  offlineAt?: number; // set when this is the copy kept from that time because the network failed
 }
