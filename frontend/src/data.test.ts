@@ -245,6 +245,12 @@ describe('sets', () => {
   it('treats a 10-point match tiebreak as a set, not games', () => {
     expect(setTotals([set(6, 4), set(3, 6), set(10, 7)])).toEqual({ games: [9, 10], sets: [2, 1] });
   });
+  it('never changes a result: the record and recap follow the stored result, not the score text', () => {
+    const lost = { ...match('2025-05-01', false), score: '6-0 6-0' }; // score reads like a win, stored as a loss
+    const won = { ...match('2025-05-02', true), score: '0-6 0-6', sets: [set(0, 6), set(0, 6)] }; // and the reverse
+    expect(record([lost, won])).toEqual({ wins: 1, losses: 1 });
+    expect(recap({ matches: [lost, won], ratings: [], trophies: { trophies: [], suggestions: [] } }, '2025')).toMatchObject({ wins: 1, losses: 1 });
+  });
   it('names ITF levels and falls back to the raw code', () => {
     expect([levelName('LOC'), levelName('DIS'), levelName('REC'), levelName('XYZ'), levelName(null)]).toEqual(['Local', 'District', 'Recreational', 'XYZ', '']);
   });
