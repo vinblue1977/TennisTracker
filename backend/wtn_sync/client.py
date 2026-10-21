@@ -13,8 +13,8 @@ query($t: ID!, $start: String, $end: String) {
   wtnPast(tennisID: $t, startDate: $start, endDate: $end) {
     type ratingDate tennisNumber confidence source
     matchUps {
-      id start winningSide status
-      score { scoreString }
+      id start winningSide status tournamentLevel
+      score { scoreString sets { winnerGamesWon loserGamesWon tiebreaker { winnerPointsWon loserPointsWon } } }
       tournament { name }
       sides { sideNumber players { person { id tennisID standardGivenName standardFamilyName } } }
       worldTennisNumbers { personId tennisNumber type }

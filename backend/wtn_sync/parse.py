@@ -30,6 +30,13 @@ class Player:
 
 
 @dataclass(frozen=True)
+class SetScore:
+    mine: int
+    theirs: int
+    tiebreak: tuple[int, int] | None  # points, yours first; None when the set had no tiebreak
+
+
+@dataclass(frozen=True)
 class Match:
     match_id: str
     date: str
@@ -41,6 +48,8 @@ class Match:
     partners: tuple[Player, ...]
     opponents: tuple[Player, ...]
     upset_gap: float | None  # set only for upset wins
+    sets: tuple[SetScore, ...]  # your side first; empty when the API gave no set detail
+    level: str | None  # ITF code, e.g. LOC, DIS, REC
 
 
 def my_side_first(score: str, won: bool | None) -> str:
@@ -57,6 +66,24 @@ def my_side_first(score: str, won: bool | None) -> str:
         tiebreak = "" if tb_a is None else f"({tb_a})" if tb_b is None else f"({tb_b}-{tb_a})"
         parts.append(f"{b}-{a}{tiebreak}")
     return " ".join(parts)
+
+
+def _sets(raw: list[dict[str, Any]] | None, won: bool | None) -> tuple[SetScore, ...]:
+    """The API lists every set from the match winner's side, so a loss swaps them (as `my_side_first` does).
+
+    Tiebreak points are assumed to follow the same side. The API has returned none for this player yet,
+    so the UI shows only the lower number, which is right either way.
+    """
+    sets = []
+    for s in raw or []:
+        a, b = s["winnerGamesWon"], s["loserGamesWon"]
+        tb = s.get("tiebreaker")
+        points = (tb["winnerPointsWon"], tb["loserPointsWon"]) if tb else None
+        if won is False:
+            a, b = b, a
+            points = points and (points[1], points[0])
+        sets.append(SetScore(a, b, points))
+    return tuple(sets)
 
 
 def parse(payload: dict[str, Any], tennis_id: str) -> tuple[list[Rating], list[Match]]:
@@ -111,4 +138,6 @@ def _match(raw: dict[str, Any], tennis_id: str) -> Match | None:
         partners=partners,
         opponents=opponents,
         upset_gap=upset_gap,
+        sets=_sets((raw.get("score") or {}).get("sets"), won),
+        level=raw.get("tournamentLevel"),
     )

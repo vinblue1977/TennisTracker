@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, recap, teamAverage, wtnAfter } from './data';
+import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, recap, teamAverage, wtnAfter, levelName, setTotals } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -197,6 +197,38 @@ describe('recap', () => {
     expect(r.upset).toEqual({ gap: 0.8, partner: 'Ann', date: '2025-05-02' });
   });
   it('has no partner or upset when none qualify', () => {
-    expect(recap(data, '2024')).toMatchObject({ partner: null, upset: null, wtn: null });
+    expect(recap(data, '2024')).toMatchObject({ partner: null, upset: null, wtn: null, games: null, closestWin: null });
+  });
+  it('totals games and finds the closest win from set data, ignoring matches without it', () => {
+    const set = (mine: number, theirs: number) => ({ mine, theirs, tiebreak: null });
+    const withSets = (date: string, won: boolean, score: string, sets: ReturnType<typeof set>[]): Match => ({ ...match(date, won), score, sets });
+    const r = recap(
+      {
+        ...data,
+        matches: [
+          withSets('2025-05-01', true, '6-0 6-0', [set(6, 0), set(6, 0)]),
+          withSets('2025-06-01', true, '3-6 7-6 1-0', [set(3, 6), set(7, 6), set(1, 0)]),
+          withSets('2025-06-02', true, '6-3 6-3', [set(6, 3), set(6, 3)]),
+          withSets('2025-06-03', false, '2-6 2-6', [set(2, 6), set(2, 6)]),
+          m('2025-07-01', true, 'Ann'), // no set data
+        ],
+      },
+      '2025',
+    );
+    expect(r.games).toEqual({ won: 12 + 10 + 12 + 4, total: 12 + 22 + 18 + 16 });
+    expect(r.closestWin).toEqual({ score: '3-6 7-6 1-0', date: '2025-06-01' });
+  });
+});
+
+describe('sets', () => {
+  const set = (mine: number, theirs: number) => ({ mine, theirs, tiebreak: null });
+  it('counts a match tiebreak as a set but not as games', () => {
+    expect(setTotals([set(3, 6), set(7, 6), set(1, 0)])).toEqual({ games: [10, 12], sets: [2, 1] });
+    expect(setTotals([set(2, 6), set(6, 4), set(0, 1)])).toEqual({ games: [8, 10], sets: [1, 2] });
+    expect(setTotals([])).toEqual({ games: [0, 0], sets: [0, 0] });
+    expect(setTotals([set(1, 0), set(6, 3)])).toEqual({ games: [7, 3], sets: [2, 0] }); // a retired 1-0 first set is a real game
+  });
+  it('names ITF levels and falls back to the raw code', () => {
+    expect([levelName('LOC'), levelName('DIS'), levelName('REC'), levelName('XYZ'), levelName(null)]).toEqual(['Local', 'District', 'Recreational', 'XYZ', '']);
   });
 });

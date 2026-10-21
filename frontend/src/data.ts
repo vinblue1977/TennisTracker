@@ -1,5 +1,5 @@
 // Pure helpers that turn API data into what the screens show.
-import type { Data, Match, Player, Profile, Rating } from './types';
+import type { Data, Match, Player, Profile, Rating, SetScore } from './types';
 
 export interface Point {
   date: string;
@@ -44,6 +44,21 @@ export function record(matches: Match[]): { wins: number; losses: number } {
   return {
     wins: matches.filter((m) => m.won === true).length,
     losses: matches.filter((m) => m.won === false).length,
+  };
+}
+
+const LEVELS: Record<string, string> = { LOC: 'Local', DIS: 'District', REC: 'Recreational' };
+export const levelName = (code: string | null | undefined) => (code ? (LEVELS[code] ?? code) : '');
+
+/** A match tiebreak is reported as a one-game set (1-0) that ends the match; a 1-0 first set is a retirement. */
+export const isMatchTiebreak = (s: SetScore, i: number, sets: SetScore[]) => i > 0 && i === sets.length - 1 && s.mine + s.theirs === 1;
+
+/** Games and sets from your side. A match tiebreak counts as a set but not as games. */
+export function setTotals(sets: SetScore[]): { games: [number, number]; sets: [number, number] } {
+  const real = sets.filter((s, i) => !isMatchTiebreak(s, i, sets));
+  return {
+    games: [real.reduce((n, s) => n + s.mine, 0), real.reduce((n, s) => n + s.theirs, 0)],
+    sets: [sets.filter((s) => s.mine > s.theirs).length, sets.filter((s) => s.mine < s.theirs).length],
   };
 }
 
@@ -219,6 +234,8 @@ export interface Recap {
   longestWin: number;
   winners: number;
   finalists: number;
+  games: { won: number; total: number } | null;
+  closestWin: { score: string; date: string } | null;
   wtn: { from: number; to: number } | null;
 }
 
@@ -233,6 +250,12 @@ export function recap(data: Pick<Data, 'matches' | 'ratings' | 'trophies'>, year
   const upset = played
     .filter((m) => m.won && m.upsetGap !== null)
     .sort((a, b) => (b.upsetGap ?? 0) - (a.upsetGap ?? 0))[0];
+  const scored = played.filter((m) => m.sets?.length).map((m) => ({ m, g: setTotals(m.sets ?? []).games }));
+  const total = scored.reduce((n, { g }) => n + g[0] + g[1], 0);
+  const share = ({ g }: (typeof scored)[number]) => g[0] / (g[0] + g[1]);
+  const closest = scored
+    .filter((x) => x.m.won && x.g[0] + x.g[1] > 0)
+    .sort((a, b) => share(a) - share(b) || matchDate(b.m).localeCompare(matchDate(a.m)))[0]?.m;
   const trophies = data.trophies.trophies.filter((t) => t.date.startsWith(year));
   const points = ratingHistory(data.ratings, data.matches);
   const inYear = points.filter((p) => p.date.startsWith(year));
@@ -248,6 +271,8 @@ export function recap(data: Pick<Data, 'matches' | 'ratings' | 'trophies'>, year
     longestWin: form(played).longestWin,
     winners: trophies.filter((t) => t.result === 'winner').length,
     finalists: trophies.filter((t) => t.result === 'finalist').length,
+    games: total ? { won: scored.reduce((n, { g }) => n + g[0], 0), total } : null,
+    closestWin: closest ? { score: closest.score, date: matchDate(closest) } : null,
     wtn: start && end && start !== end ? { from: start.value, to: end.value } : null,
   };
 }

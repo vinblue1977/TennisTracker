@@ -3,7 +3,7 @@
 from decimal import Decimal
 from typing import Any
 
-from wtn_sync.parse import Match, Player, Rating
+from wtn_sync.parse import Match, Player, Rating, SetScore
 
 
 def _num(value: float | None) -> Decimal | None:
@@ -12,6 +12,10 @@ def _num(value: float | None) -> Decimal | None:
 
 def _player(p: Player) -> dict[str, Any]:
     return {"tennisId": p.tennis_id, "name": p.name, "wtn": _num(p.wtn)}
+
+
+def _set(s: SetScore) -> dict[str, Any]:
+    return {"mine": s.mine, "theirs": s.theirs, "tiebreak": list(s.tiebreak) if s.tiebreak else None}
 
 
 def rating_item(user_id: str, r: Rating) -> dict[str, Any]:
@@ -38,4 +42,6 @@ def match_item(user_id: str, m: Match) -> dict[str, Any]:
         "partners": [_player(p) for p in m.partners],
         "opponents": [_player(p) for p in m.opponents],
         "upsetGap": _num(m.upset_gap),
+        "sets": [_set(s) for s in m.sets],
+        "level": m.level,
     }

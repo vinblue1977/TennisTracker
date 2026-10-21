@@ -22,7 +22,27 @@
       "winningSide": "SIDE1",
       "status": "COMPLETED",
       "score": {
-       "scoreString": "3-6 7-6 1-0"
+       "scoreString": "3-6 7-6 1-0",
+       "sets": [
+        {
+         "winnerGamesWon": 3,
+         "loserGamesWon": 6,
+         "tiebreaker": null
+        },
+        {
+         "winnerGamesWon": 7,
+         "loserGamesWon": 6,
+         "tiebreaker": {
+          "winnerPointsWon": 7,
+          "loserPointsWon": 5
+         }
+        },
+        {
+         "winnerGamesWon": 1,
+         "loserGamesWon": 0,
+         "tiebreaker": null
+        }
+       ]
       },
       "tournament": {
        "name": "Test Championships"
@@ -97,7 +117,8 @@
         "tennisNumber": 20.0,
         "type": "SINGLE"
        }
-      ]
+      ],
+      "tournamentLevel": "LOC"
      }
     ]
    },
@@ -114,7 +135,22 @@
       "winningSide": "SIDE2",
       "status": "COMPLETED",
       "score": {
-       "scoreString": "7-6(5) 6-4"
+       "scoreString": "7-6(5) 6-4",
+       "sets": [
+        {
+         "winnerGamesWon": 7,
+         "loserGamesWon": 6,
+         "tiebreaker": {
+          "winnerPointsWon": 7,
+          "loserPointsWon": 5
+         }
+        },
+        {
+         "winnerGamesWon": 6,
+         "loserGamesWon": 4,
+         "tiebreaker": null
+        }
+       ]
       },
       "tournament": {
        "name": "Test League"
@@ -249,7 +285,22 @@
       "winningSide": "SIDE2",
       "status": "COMPLETED",
       "score": {
-       "scoreString": "7-6(5) 6-4"
+       "scoreString": "7-6(5) 6-4",
+       "sets": [
+        {
+         "winnerGamesWon": 7,
+         "loserGamesWon": 6,
+         "tiebreaker": {
+          "winnerPointsWon": 7,
+          "loserPointsWon": 5
+         }
+        },
+        {
+         "winnerGamesWon": 6,
+         "loserGamesWon": 4,
+         "tiebreaker": null
+        }
+       ]
       },
       "tournament": {
        "name": "Test League"

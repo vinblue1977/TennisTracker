@@ -17,7 +17,7 @@ const writeDraft = (id: string, text: string | null) => {
   }
 };
 
-import { formatDate, matchDate, ratingHistory, shortName, teamAverage, wtnAfter } from '../data';
+import { formatDate, isMatchTiebreak, levelName, matchDate, ratingHistory, setTotals, shortName, teamAverage, wtnAfter } from '../data';
 import { api } from '../api';
 import { MatchForm } from '../components/MatchForm';
 import { forOwner } from '../photos';
@@ -104,6 +104,7 @@ export function MatchDetail({ data, id, onSave, onPhotos, onMatches }: Props) {
           <span class="pill" style={{ background: m.won ? 'var(--win)' : m.won === false ? 'var(--loss)' : 'var(--field)', color: m.won === null ? 'var(--text)' : 'var(--ground)' }}>
             {m.won ? 'Win' : m.won === false ? 'Loss' : 'No result'}
           </span>
+          {m.level && <span class="pill level">{levelName(m.level)}</span>}
           {m.upsetGap !== null && <span class="pill">{m.upsetGap > 0 ? `Upset · ${m.upsetGap.toFixed(2)}` : 'Upset win'}</span>}
         </div>
         <h1 style={{ margin: 0, fontSize: '22px', lineHeight: 1.2 }}>{m.event}</h1>
@@ -114,6 +115,8 @@ export function MatchDetail({ data, id, onSave, onPhotos, onMatches }: Props) {
           {m.score}
         </span>
       </section>
+
+      {m.sets && m.sets.length > 0 && <Sets sets={m.sets} />}
 
       <section class="list" aria-label="Players and WTN going in">
         <Team label="Your team" players={m.partners} average={null} you />
@@ -152,6 +155,39 @@ export function MatchDetail({ data, id, onSave, onPhotos, onMatches }: Props) {
         </div>
       </section>
     </main>
+  );
+}
+
+function Sets({ sets }: { sets: NonNullable<Match['sets']> }) {
+  const { games, sets: won } = setTotals(sets);
+  const pct = games[0] + games[1] ? Math.round((games[0] / (games[0] + games[1])) * 100) : 0;
+  return (
+    <section class="card sets" aria-label="Sets">
+      <div class="eyebrow">Sets</div>
+      {sets.map((s, i) => (
+        <div key={i} class="set">
+          <span class="eyebrow">{isMatchTiebreak(s, i, sets) ? 'Tie-break' : `Set ${i + 1}`}</span>
+          <div class="bar" role="img" aria-label={s.mine > s.theirs ? 'Won' : 'Lost'}>
+            <i class={s.mine > s.theirs ? 'me' : 'them'} />
+          </div>
+          <span class="num set-score">
+            {s.mine}–{s.theirs}
+            {s.tiebreak && <small>({Math.min(...s.tiebreak)})</small>}
+          </span>
+        </div>
+      ))}
+      <div class="sets-sum">
+        <span>
+          Games <b>{games[0]}–{games[1]}</b>
+        </span>
+        <span>
+          Won <b>{pct}%</b>
+        </span>
+        <span>
+          Sets <b>{won[0]}–{won[1]}</b>
+        </span>
+      </div>
+    </section>
   );
 }
 

@@ -3,6 +3,12 @@ export interface Player {
   wtn: number | null;
 }
 
+export interface SetScore {
+  mine: number;
+  theirs: number;
+  tiebreak: [number, number] | null; // points, yours first
+}
+
 export interface Match {
   id: string;
   SK: string; // MATCH#<date>#<id>
@@ -14,6 +20,8 @@ export interface Match {
   partners: Player[];
   opponents: Player[];
   upsetGap: number | null;
+  sets?: SetScore[]; // your side first; WTN matches only
+  level?: string | null; // ITF code such as LOC
   source: string;
   note: string;
   starred: boolean;
