@@ -99,6 +99,7 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
   const health = syncHealth(data.profile, data.matches);
   const runAt = sync.lastRunAt ? new Date(sync.lastRunAt) : null; // date and time both in the phone's time zone
   const lastRun = runAt ? `${runAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} at ${formatTime(runAt)}` : 'never';
+  const wtnLate = !sync.lastRunAt || Date.now() - new Date(sync.lastRunAt).getTime() > 8 * 24 * 3_600_000; // WTN runs Wed and Thu
   return (
     <main class="screen cols">
       <h1 class="title">Me</h1>
@@ -111,7 +112,7 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
           <span style={{ fontWeight: 600 }}>{data.profile.tennisId ?? 'not set'}</span>
         </div>
       </section>
-      <Collapsible title="Sync health" summary={health.every((r) => r.ok) && (sync.status === 'ok' || !sync.status) ? 'All good' : 'Needs attention'}>
+      <Collapsible title="Sync health" summary={health.every((r) => r.ok) && !wtnLate && (sync.status === 'ok' || !sync.status) ? 'All good' : 'Needs attention'}>
         {health.map((r) => (
           <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
             <span>{r.label}</span>
@@ -120,8 +121,8 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
           <span>Last sync</span>
-          <span style={{ fontWeight: 600, color: sync.status === 'ok' ? 'var(--win-text)' : 'var(--loss-text)', textAlign: 'right' }}>
-            {lastRun} · {sync.status ?? '–'}
+          <span style={{ fontWeight: 600, color: sync.status === 'ok' && !wtnLate ? 'var(--win-text)' : 'var(--loss-text)', textAlign: 'right' }}>
+            {lastRun} · {sync.status ?? '–'}{wtnLate ? ' · late' : ''}
           </span>
         </div>
         <details>

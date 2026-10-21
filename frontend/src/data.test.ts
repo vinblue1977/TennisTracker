@@ -91,9 +91,9 @@ describe('form', () => {
   it('counts a losing run as negative', () => {
     expect(form(run(true, false, false)).streak).toBe(-2);
   });
-  it('shows the last 5 oldest first and the last 10 record, ignoring unplayed and order', () => {
+  it('shows the last 5 newest first and the last 10 record, ignoring unplayed and order', () => {
     const f = form([...run(true, true, false, true, true, true, false, true, true, true, true, false), match('2025-02-01', null)].reverse());
-    expect(f.last).toEqual([true, true, true, true, false]);
+    expect(f.last).toEqual([false, true, true, true, true]);
     expect(f.recent).toEqual({ wins: 7, losses: 3 });
   });
   it('handles no matches', () => {
@@ -147,19 +147,17 @@ describe('syncHealth', () => {
   });
   it('is all ok when both syncs ran recently', () => {
     const rows = syncHealth({ tennisId: null, calendar: { connected: true, status: 'ok', lastRunAt: '2026-10-19T11:50:00Z' }, sync: { status: 'ok', lastRunAt: '2026-10-15T11:00:00Z' } }, [match], now);
-    expect(rows.map((r) => r.ok)).toEqual([true, true, true, true]);
-    expect(rows[3]?.value).toBe('14 Oct 2026');
+    expect(rows.map((r) => r.ok)).toEqual([true, true, true]);
+    expect(rows[2]?.value).toBe('14 Oct 2026');
   });
   it('flags failing and late syncs', () => {
     const rows = syncHealth({ tennisId: null, calendar: { connected: true, status: 'ok', lastRunAt: '2026-10-19T08:00:00Z' }, sync: { status: 'error', lastRunAt: '2026-10-19T11:00:00Z', consecutiveFailures: 2 } }, [], now);
-    expect(rows[0]).toMatchObject({ ok: false, value: '1 h ago · failing (2 in a row)' });
-    expect(rows[1]).toMatchObject({ ok: false, value: '4 h ago · late' });
-    expect(rows[3]?.value).toBe('none yet');
+    expect(rows[0]).toMatchObject({ ok: false, value: '4 h ago · late' });
+    expect(rows[2]?.value).toBe('none yet');
   });
-  it('skips the calendar when it is not connected and flags a never-run WTN sync', () => {
+  it('skips the calendar when it is not connected', () => {
     const rows = syncHealth({ tennisId: null, sync: {} }, [], now);
-    expect(rows.map((r) => r.label)).toEqual(['WTN sync', 'Weekly backup', 'Last match seen']);
-    expect(rows[0]).toMatchObject({ ok: false, value: 'never · late' });
+    expect(rows.map((r) => r.label)).toEqual(['Weekly backup', 'Last match seen']);
   });
 });
 
@@ -179,8 +177,8 @@ describe('matchesBehind', () => {
 describe('syncHealth backup row', () => {
   const now = new Date('2026-10-19T12:00:00Z');
   it('waits for the first backup, then flags one that is over 8 days old', () => {
-    expect(syncHealth({ tennisId: null, sync: { status: 'ok', lastRunAt: now.toISOString() } }, [], now)[1]).toMatchObject({ ok: true, value: 'first one runs Sunday' });
-    const old = syncHealth({ tennisId: null, sync: { status: 'ok', lastRunAt: now.toISOString() }, backup: { lastRunAt: '2026-10-05T06:00:00Z' } }, [], now)[1];
+    expect(syncHealth({ tennisId: null, sync: { status: 'ok', lastRunAt: now.toISOString() } }, [], now)[0]).toMatchObject({ ok: true, value: 'first one runs Sunday' });
+    const old = syncHealth({ tennisId: null, sync: { status: 'ok', lastRunAt: now.toISOString() }, backup: { lastRunAt: '2026-10-05T06:00:00Z' } }, [], now)[0];
     expect(old).toMatchObject({ ok: false, value: '14 days ago · late' });
   });
 });

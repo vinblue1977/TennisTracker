@@ -28,7 +28,7 @@ export function Home({ data, loadedAt, onRefresh }: { data: Data; loadedAt: numb
         <div class="muted">{today}</div>
         <h1 class="title">Tennis</h1>
         <div class="muted" style={{ fontSize: '14px' }} role="status">
-          {refreshing ? 'Refreshing…' : failed ? 'Could not refresh' : `Updated ${ago(new Date(loadedAt).toISOString())}`} ·{' '}
+          {refreshing ? 'Refreshing…' : failed ? 'Could not refresh' : `Loaded ${ago(new Date(loadedAt).toISOString())}`} ·{' '}
           <button class="link" type="button" disabled={refreshing} onClick={refresh}>
             Refresh
           </button>
@@ -107,7 +107,7 @@ export function Home({ data, loadedAt, onRefresh }: { data: Data; loadedAt: numb
             {streakForm.streak >= 2 && <span class="pill">W{streakForm.streak} streak</span>}
             {streakForm.streak <= -2 && <span class="muted">L{-streakForm.streak} run</span>}
           </div>
-          <div class="row" style={{ gap: '8px' }} aria-label="Last results, oldest first">
+          <div class="row" style={{ gap: '8px' }} aria-label="Last results, newest first">
             {streakForm.last.map((won) => (
               <span class={`badge ${won ? 'W' : 'L'}`}>{won ? 'W' : 'L'}</span>
             ))}
