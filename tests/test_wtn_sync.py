@@ -59,6 +59,14 @@ def test_loss_is_flipped_and_never_an_upset() -> None:
     assert not m.won and m.score == "6-7(5) 4-6" and m.upset_gap is None
 
 
+def test_sets_and_level_are_kept_from_your_side() -> None:
+    win, loss = _matches()["wtn:m-upset"], _matches()["wtn:m-loss"]
+    as_tuples = lambda m: [(s.mine, s.theirs, s.tiebreak) for s in m.sets]  # noqa: E731
+    assert win.level == "LOC" and as_tuples(win) == [(3, 6, None), (7, 6, (7, 5)), (1, 0, None)]
+    assert as_tuples(loss) == [(6, 7, (5, 7)), (4, 6, None)]  # flipped like the score
+    assert _matches()["wtn:m-singles"].sets == () and _matches()["wtn:m-singles"].level is None
+
+
 def test_default_win_has_no_opponents() -> None:
     m = _matches()["wtn:m-default"]
     assert m.won and m.opponents == () and m.partners == () and m.upset_gap is None
@@ -76,6 +84,7 @@ def test_items_use_plan_keys_and_decimals() -> None:
     m = match_item("u1", matches[-1])
     assert m["SK"] == "MATCH#2025-08-03#wtn:m-upset"
     assert m["upsetGap"] == Decimal("3.25") and m["opponents"][0]["wtn"] == Decimal("23.31")
+    assert m["level"] == "LOC" and m["sets"][1] == {"mine": 7, "theirs": 6, "tiebreak": [7, 5]}
     assert "note" not in m  # notes live in EXTRA# items
 
 

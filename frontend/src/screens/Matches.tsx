@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 
 import { api } from '../api';
 import { MatchForm, blankMatch } from '../components/MatchForm';
-import { formatDate, matchDate, ratingHistory, shortName, wtnAfter } from '../data';
+import { formatDate, levelName, matchDate, ratingHistory, shortName, wtnAfter } from '../data';
 import { UpcomingCard } from '../components/Upcoming';
 import { forOwner } from '../photos';
 import type { Data, Match } from '../types';
@@ -41,6 +41,7 @@ export function MatchRow({ m }: { m: Match }) {
 export function Matches({ data, upcomingTab = false, upsetsOnly = false, person = '', role, selectedId = '', onPhotos, onMatches }: { data: Data; upcomingTab?: boolean; upsetsOnly?: boolean; person?: string; role?: 'partner' | 'opponent'; selectedId?: string; onPhotos?: () => Promise<void>; onMatches?: <T>(change: () => Promise<T>) => Promise<T> }) {
   const [query, setQuery] = useState('');
   const [event, setEvent] = useState('');
+  const [picked, setLevel] = useState('');
   const [logging, setLogging] = useState(false);
   const points = ratingHistory(data.ratings, data.matches);
   const q = query.trim().toLowerCase();
@@ -49,9 +50,11 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
     const e = events.get(m.event);
     events.set(m.event, { count: (e?.count ?? 0) + 1, latest: e && e.latest > matchDate(m) ? e.latest : matchDate(m) });
   }
+  const levels = [...new Set(data.matches.map((m) => m.level).filter((l): l is string => !!l))];
+  const level = levels.includes(picked) ? picked : ''; // a stale pick can't hide the matches once its chip is gone
   const tournaments = [...events].sort((a, b) => b[1].latest.localeCompare(a[1].latest));
   const shown = data.matches.filter(
-    (m) => (!upsetsOnly || m.upsetGap !== null) && (!event || m.event === event) && (!person || (m.kind === 'DOUBLE' && m.won !== null && (role === 'partner' ? m.partners : role === 'opponent' ? m.opponents : [...m.partners, ...m.opponents]).some((p) => shortName(p.name) === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
+    (m) => (!upsetsOnly || m.upsetGap !== null) && (!event || m.event === event) && (!level || m.level === level) && (!person || (m.kind === 'DOUBLE' && m.won !== null && (role === 'partner' ? m.partners : role === 'opponent' ? m.opponents : [...m.partners, ...m.opponents]).some((p) => shortName(p.name) === person))) && (!q || [m.event, ...m.partners.map((p) => p.name), ...m.opponents.map((p) => p.name)].some((s) => s.toLowerCase().includes(q))),
   );
   let year = '';
 
@@ -101,6 +104,15 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
         <span class="sr-only">Search</span>
         <input type="search" placeholder="Search partner, opponent, event" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
       </label>
+      {levels.length > 1 && (
+        <div class="chips">
+          {['', ...levels].map((l) => (
+            <button key={l} type="button" class={`chip${l === level ? ' on' : ''}`} aria-pressed={l === level} onClick={() => setLevel(l)}>
+              {l ? levelName(l) : 'All'}
+            </button>
+          ))}
+        </div>
+      )}
       <label>
         <span class="sr-only">Tournament</span>
         <select value={event} onChange={(e) => setEvent(e.currentTarget.value)}>
@@ -112,7 +124,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
           ))}
         </select>
       </label>
-      {shown.length === 0 && <p class="muted">{upsetsOnly && !q && !event ? 'No upset wins yet.' : `No matches${q || event ? ' match your filter' : ' yet'}.`}</p>}
+      {shown.length === 0 && <p class="muted">{upsetsOnly && !q && !event && !level ? 'No upset wins yet.' : `No matches${q || event || level ? ' match your filter' : ' yet'}.`}</p>}
       {shown.map((m) => {
         const y = matchDate(m).slice(0, 4);
         const header = y !== year ? <h2 class="year">{(year = y)}</h2> : null;
@@ -134,6 +146,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
                     WTN after <strong style={{ color: 'var(--text)' }}>{after.toFixed(2)}</strong>
                   </span>
                 )}
+                {m.level && <span class="muted">{levelName(m.level)}</span>}
                 {m.upsetGap !== null && <span class="pill">Upset win</span>}
                 {m.starred && <span aria-label="Best match">★</span>}
                 {m.note && <span class="muted">· note</span>}

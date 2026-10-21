@@ -64,6 +64,14 @@ export function Recap({ data }: { data: Data }) {
                 <span>Longest win streak</span>
               </div>
               <div class="recap-tile">
+                <b>{r.games ? `${Math.round((r.games.won / r.games.total) * 100)}%` : '–'}</b>
+                <span>Games won{r.games ? ` · ${r.games.won} of ${r.games.total}` : ''}</span>
+              </div>
+              <div class="recap-tile">
+                <b style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.closestWin?.score ?? '–'}</b>
+                <span>Closest win{r.closestWin ? ` · ${formatDate(r.closestWin.date)}` : ''}</span>
+              </div>
+              <div class="recap-tile">
                 <b>
                   {trophies} {trophies === 1 ? 'trophy' : 'trophies'}
                 </b>
