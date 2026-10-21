@@ -59,6 +59,9 @@ export function Stats({ data }: { data: Data }) {
           {winPct(total)}% <span class="muted" style={{ fontSize: '22px' }}>{total.wins}–{total.losses}</span>
         </div>
       </section>
+      <a class="card tap" href="#/recap">
+        Season recap ›
+      </a>
       <section class="card">
         <div class="eyebrow">Win % by year</div>
         <div class="year-chart" role="img" aria-label={years.map((y) => `${y.year} ${winPct(y)}%`).join(', ')}>

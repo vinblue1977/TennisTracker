@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, teamAverage, wtnAfter } from './data';
+import { ago, byYear, matchesBehind, syncHealth, form, matchesCsv, formatTime, latest, playedDoubles, tally, winPct, ratingHistory, record, relativeDay, shortName, recap, teamAverage, wtnAfter } from './data';
 import type { Match, Rating } from './types';
 
 const match = (date: string, won: boolean | null): Match => ({
@@ -182,5 +182,23 @@ describe('syncHealth backup row', () => {
     expect(syncHealth({ tennisId: null, sync: { status: 'ok', lastRunAt: now.toISOString() } }, [], now)[1]).toMatchObject({ ok: true, value: 'first one runs Sunday' });
     const old = syncHealth({ tennisId: null, sync: { status: 'ok', lastRunAt: now.toISOString() }, backup: { lastRunAt: '2026-10-05T06:00:00Z' } }, [], now)[1];
     expect(old).toMatchObject({ ok: false, value: '14 days ago · late' });
+  });
+});
+
+describe('recap', () => {
+  const m = (date: string, won: boolean, partner: string, upsetGap: number | null = null): Match => ({ ...match(date, won), partners: [{ name: partner, wtn: null }], upsetGap });
+  const data = {
+    matches: [m('2025-05-01', true, 'Ann'), m('2025-05-02', true, 'Ann', 0.8), m('2025-06-01', false, 'Bob'), m('2025-06-02', true, 'Bob'), m('2024-01-01', true, 'Cy')],
+    ratings: [rating('2024-06-01', 27), rating('2025-02-01', 26), rating('2025-07-01', 25)],
+    trophies: { trophies: [{ id: 't', event: 'E', date: '2025-05-02', result: 'winner' as const, note: '' }], suggestions: [] },
+  };
+  it('summarises one year', () => {
+    const r = recap(data, '2025');
+    expect(r).toMatchObject({ wins: 3, losses: 1, events: 1, longestWin: 2, winners: 1, finalists: 0, wtn: { from: 27, to: 25 } });
+    expect(r.partner).toMatchObject({ name: 'Ann', wins: 2, pct: 100 });
+    expect(r.upset).toEqual({ gap: 0.8, partner: 'Ann', date: '2025-05-02' });
+  });
+  it('has no partner or upset when none qualify', () => {
+    expect(recap(data, '2024')).toMatchObject({ partner: null, upset: null, wtn: null });
   });
 });
