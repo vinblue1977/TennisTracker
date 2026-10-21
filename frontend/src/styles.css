@@ -174,3 +174,16 @@ a.card.tap { display: flex; }
   .split > .screen:last-child { flex: 1 1 460px; position: sticky; top: 0; max-height: 100dvh; overflow-y: auto; }
   .split .back { display: none; }
 }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: 44px; padding: 0 16px; border: 0; border-radius: 99px; background: var(--card); font-weight: 600; cursor: pointer; }
+.chip.on { background: var(--accent); color: var(--on-accent); }
+.recap { background: linear-gradient(160deg, #1d5a3a, var(--hero)); border: 1px solid var(--hero-line); border-radius: 22px; padding: 22px 20px; display: flex; flex-direction: column; gap: 16px; }
+.recap-year { font: 700 18px var(--display); letter-spacing: 2px; color: var(--accent); }
+.recap-big { font: 700 84px/0.95 var(--display); }
+.recap-big small { font-size: 26px; color: var(--hero-muted); margin-left: 6px; }
+.recap-sub, .recap-foot, .recap-tile span { color: var(--hero-muted); }
+.recap-tile { background: rgba(0, 0, 0, 0.22); border-radius: 14px; padding: 10px 12px; }
+.recap-tile b { display: block; font: 700 26px var(--display); }
+.recap-tile span { font-size: 13px; }
+.recap-foot { font-size: 12px; display: flex; justify-content: space-between; }

@@ -9,6 +9,7 @@ import { Home } from './screens/Home';
 import { MatchDetail } from './screens/MatchDetail';
 import { Matches } from './screens/Matches';
 import { Me } from './screens/Me';
+import { Recap } from './screens/Recap';
 import { Stats } from './screens/Stats';
 import { WtnHistory } from './screens/WtnHistory';
 import type { Data } from './types';
@@ -215,6 +216,8 @@ export function App() {
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} onMatches={onMatches} />
   ) : withName ? (
     <Matches key={hash} data={data} person={safeDecode(withName)} role={withMatch?.[1] as 'partner' | 'opponent' | undefined} onPhotos={onPhotos} />
+  ) : hash === '#/recap' ? (
+    <Recap data={data} />
   ) : hash === '#/stats' ? (
     <Stats data={data} />
   ) : hash === '#/matches' ? (
@@ -233,7 +236,7 @@ export function App() {
   return (
     <div class="page">
       {screen}
-      <TabBar active={detailId || withName ? '#/matches' : hash === '#/stats' ? '#/' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
+      <TabBar active={detailId || withName ? '#/matches' : hash === '#/stats' || hash === '#/recap' ? '#/' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
     </div>
   );
 }

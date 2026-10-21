@@ -1,5 +1,5 @@
 // Pure helpers that turn API data into what the screens show.
-import type { Match, Player, Profile, Rating } from './types';
+import type { Data, Match, Player, Profile, Rating } from './types';
 
 export interface Point {
   date: string;
@@ -207,4 +207,47 @@ export function syncHealth(profile: Profile, matches: Match[], now = new Date())
   const last = matches.map(matchDate).sort().at(-1);
   rows.push({ label: 'Last match seen', value: last ? new Date(`${last}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'none yet', ok: true });
   return rows;
+}
+
+export interface Recap {
+  year: string;
+  wins: number;
+  losses: number;
+  events: number;
+  partner: (Tally & { pct: number }) | null;
+  upset: { gap: number | null; partner: string; date: string } | null;
+  longestWin: number;
+  winners: number;
+  finalists: number;
+  wtn: { from: number; to: number } | null;
+}
+
+/** Doubles season summary for one year. Best partner needs 2+ matches. */
+export function recap(data: Pick<Data, 'matches' | 'ratings' | 'trophies'>, year: string): Recap {
+  const played = playedDoubles(data.matches).filter((m) => matchDate(m).startsWith(year));
+  const { wins, losses } = record(played);
+  const partner = tally(played, (m) => m.partners)
+    .filter((t) => t.wins + t.losses >= 2)
+    .map((t) => ({ ...t, pct: winPct(t) }))
+    .sort((a, b) => b.pct - a.pct || b.wins + b.losses - (a.wins + a.losses))[0];
+  const upset = played
+    .filter((m) => m.won && m.upsetGap !== null)
+    .sort((a, b) => (b.upsetGap ?? 0) - (a.upsetGap ?? 0))[0];
+  const trophies = data.trophies.trophies.filter((t) => t.date.startsWith(year));
+  const points = ratingHistory(data.ratings, data.matches);
+  const inYear = points.filter((p) => p.date.startsWith(year));
+  const start = points.filter((p) => p.date < `${year}-01-01`).at(-1) ?? inYear[0];
+  const end = inYear.at(-1);
+  return {
+    year,
+    wins,
+    losses,
+    events: new Set(played.map((m) => m.event).filter(Boolean)).size,
+    partner: partner ?? null,
+    upset: upset ? { gap: upset.upsetGap, partner: shortName(upset.partners[0]?.name ?? ''), date: matchDate(upset) } : null,
+    longestWin: form(played).longestWin,
+    winners: trophies.filter((t) => t.result === 'winner').length,
+    finalists: trophies.filter((t) => t.result === 'finalist').length,
+    wtn: start && end && start !== end ? { from: start.value, to: end.value } : null,
+  };
 }
