@@ -55,11 +55,19 @@ const SET = /^(\d+)-(\d+)(?:\((\d+)(?:-(\d+))?\))?$/;
 /** Sets from the synced data, else read from the score text (your side first) of a match entered by hand. */
 export function matchSets(m: Match): SetScore[] {
   if (m.sets?.length) return m.sets;
+  const text = (m.score || '').replace(/[–—]/g, '-').replace(/,/g, ' ').replace(/\s+\(/g, '(').trim();
   const sets: SetScore[] = [];
-  for (const part of m.score.trim().split(/\s+/)) {
+  for (const part of text.split(/\s+/)) {
     const x = SET.exec(part);
     if (!x) return []; // def, ret, notes: don't guess
-    sets.push({ mine: +(x[1] ?? 0), theirs: +(x[2] ?? 0), tiebreak: x[3] ? [+x[3], +(x[4] ?? x[3])] : null }); // one number: the loser's points
+    const [mine, theirs] = [+(x[1] ?? 0), +(x[2] ?? 0)];
+    let tiebreak: SetScore['tiebreak'] = null;
+    if (x[3]) {
+      const loser = +x[3];
+      const winner = x[4] ? +x[4] : Math.max(7, loser + 2); // one number: the loser's points
+      tiebreak = x[4] ? [loser, winner] : mine > theirs ? [winner, loser] : [loser, winner];
+    }
+    sets.push({ mine, theirs, tiebreak });
   }
   return sets;
 }

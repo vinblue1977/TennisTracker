@@ -199,6 +199,8 @@ describe('recap', () => {
   it('has no partner or upset when none qualify', () => {
     expect(recap(data, '2024')).toMatchObject({ partner: null, upset: null, wtn: null });
     expect(recap(data, '2023')).toMatchObject({ games: null, closestWin: null }); // no matches that year
+    const unscored = { ...data, matches: [{ ...match('2025-05-01', true), score: 'def' }] };
+    expect(recap(unscored, '2025')).toMatchObject({ wins: 1, games: null, closestWin: null }); // a score with no sets adds no stats
   });
   it('totals games and finds the closest win from set data, ignoring matches without it', () => {
     const set = (mine: number, theirs: number) => ({ mine, theirs, tiebreak: null });
@@ -233,7 +235,9 @@ describe('sets', () => {
     const typed = (score: string): Match => ({ ...match('2026-08-31', false), score });
     expect(matchSets(typed('4-6 6-4 1-0'))).toEqual([set(4, 6), set(6, 4), set(1, 0)]);
     expect(matchSets(typed('3-6 5-2(7-5)'))[1]).toEqual({ mine: 5, theirs: 2, tiebreak: [7, 5] });
-    expect(matchSets(typed('7-6(5) 6-4'))[0]).toEqual({ mine: 7, theirs: 6, tiebreak: [5, 5] });
+    expect(matchSets(typed('7-6(5) 6-4'))[0]).toEqual({ mine: 7, theirs: 6, tiebreak: [7, 5] });
+    expect(matchSets(typed('6-7(5) 6-4'))[0]).toEqual({ mine: 6, theirs: 7, tiebreak: [5, 7] });
+    expect(matchSets(typed('6–4, 7-6 (5)'))).toEqual([set(6, 4), { mine: 7, theirs: 6, tiebreak: [7, 5] }]); // commas, en dash, spaced bracket
     expect(matchSets(typed('6-0 6-0 def'))).toEqual([]);
     expect(matchSets(typed(''))).toEqual([]);
     expect(matchSets({ ...typed('6-0 6-0'), sets: [set(1, 2)] })).toEqual([set(1, 2)]); // synced data wins
