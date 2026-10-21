@@ -47,7 +47,7 @@ export const api = {
   dismissSuggestion: (id: string) => call<{ dismissed: boolean }>('/me/trophies/dismiss', { method: 'POST', body: JSON.stringify({ id }) }),
   photos: () => call<{ photos: Photo[] }>('/me/photos').then((r) => r.photos),
   photoUploadUrl: (owner: string) =>
-    call<{ id: string; url: string; fields: Record<string, string> }>('/me/photos/upload-url', { method: 'POST', body: JSON.stringify({ owner }) }),
+    call<{ id: string; url: string; fields: Record<string, string>; thumb: { url: string; fields: Record<string, string> } }>('/me/photos/upload-url', { method: 'POST', body: JSON.stringify({ owner }) }),
   photoConfirm: (owner: string, id: string) => call<{ id: string }>('/me/photos', { method: 'POST', body: JSON.stringify({ owner, id }) }),
   photoCover: (id: string) => call<{ id: string }>(`/me/photos/${id}`, { method: 'PUT' }),
   photoFocus: (id: string, focus: number) => call<{ id: string }>(`/me/photos/${id}`, { method: 'PUT', body: JSON.stringify({ focus }) }),

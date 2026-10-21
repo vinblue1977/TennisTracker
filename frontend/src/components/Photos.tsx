@@ -53,7 +53,7 @@ export function PhotoStrip({ owner, photos, onPhotos }: { owner: string; photos:
         )}
         {photos.map((p, i) => (
           <button key={p.id} class="photo-tile" type="button" aria-label={`Photo ${i + 1} of ${photos.length}`} onClick={() => setOpen(p.id)}>
-            <img src={p.url} alt="" loading="lazy" onError={() => onPhotos()} />
+            <img src={p.thumb ?? p.url} alt="" loading="lazy" decoding="async" onError={() => onPhotos()} />
           </button>
         ))}
       </div>
