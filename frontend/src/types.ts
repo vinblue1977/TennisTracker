@@ -6,7 +6,8 @@ export interface Player {
 export interface SetScore {
   mine: number;
   theirs: number;
-  tiebreak: [number, number] | null; // points, yours first
+  tiebreak: [number, number] | null; // full tiebreak score, yours first
+  bracket?: number; // a lone number typed in brackets, e.g. the 5 in 7-6(5): shown as typed, never turned into a score
 }
 
 export interface Match {

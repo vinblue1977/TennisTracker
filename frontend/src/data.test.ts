@@ -235,9 +235,9 @@ describe('sets', () => {
     const typed = (score: string): Match => ({ ...match('2026-08-31', false), score });
     expect(matchSets(typed('4-6 6-4 1-0'))).toEqual([set(4, 6), set(6, 4), set(1, 0)]);
     expect(matchSets(typed('3-6 5-2(7-5)'))[1]).toEqual({ mine: 5, theirs: 2, tiebreak: [7, 5] });
-    expect(matchSets(typed('7-6(5) 6-4'))[0]).toEqual({ mine: 7, theirs: 6, tiebreak: [7, 5] });
-    expect(matchSets(typed('6-7(5) 6-4'))[0]).toEqual({ mine: 6, theirs: 7, tiebreak: [5, 7] });
-    expect(matchSets(typed('6–4, 7-6 (5)'))).toEqual([set(6, 4), { mine: 7, theirs: 6, tiebreak: [7, 5] }]); // commas, en dash, spaced bracket
+    expect(matchSets(typed('7-6(5) 6-4'))[0]).toEqual({ mine: 7, theirs: 6, tiebreak: null, bracket: 5 }); // kept as typed, no invented score
+    expect(matchSets(typed('7-6(7) 6-4'))[0]).toMatchObject({ tiebreak: null, bracket: 7 });
+    expect(matchSets(typed('6–4, 7-6 (5)'))).toEqual([set(6, 4), { mine: 7, theirs: 6, tiebreak: null, bracket: 5 }]); // commas, en dash, spaced bracket
     expect(matchSets(typed('6-0 6-0 def'))).toEqual([]);
     expect(matchSets(typed(''))).toEqual([]);
     expect(matchSets({ ...typed('6-0 6-0'), sets: [set(1, 2)] })).toEqual([set(1, 2)]); // synced data wins

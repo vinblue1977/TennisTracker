@@ -61,13 +61,9 @@ export function matchSets(m: Match): SetScore[] {
     const x = SET.exec(part);
     if (!x) return []; // def, ret, notes: don't guess
     const [mine, theirs] = [+(x[1] ?? 0), +(x[2] ?? 0)];
-    let tiebreak: SetScore['tiebreak'] = null;
-    if (x[3]) {
-      const loser = +x[3];
-      const winner = x[4] ? +x[4] : Math.max(7, loser + 2); // one number: the loser's points
-      tiebreak = x[4] ? [loser, winner] : mine > theirs ? [winner, loser] : [loser, winner];
-    }
-    sets.push({ mine, theirs, tiebreak });
+    const set: SetScore = { mine, theirs, tiebreak: x[3] && x[4] ? [+x[3], +x[4]] : null };
+    if (x[3] && !x[4]) set.bracket = +x[3]; // one number is ambiguous (loser's or winner's points), so keep it as typed
+    sets.push(set);
   }
   return sets;
 }

@@ -173,7 +173,7 @@ function Sets({ sets }: { sets: NonNullable<Match['sets']> }) {
           </div>
           <span class="num set-score">
             {s.mine}–{s.theirs}
-            {s.tiebreak && <small>({Math.min(...s.tiebreak)})</small>}
+            {(s.tiebreak || s.bracket !== undefined) && <small>({s.tiebreak ? Math.min(...s.tiebreak) : s.bracket})</small>}
           </span>
         </div>
       ))}
