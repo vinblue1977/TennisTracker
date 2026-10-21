@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, initApi } from './api';
 import { initAuth } from './auth';
 import { TabBar } from './components/TabBar';
+import { formatTime } from './data';
 import { loadConfig } from './config';
 import { isMock } from './env';
+import { readSnapshot, saveSnapshot } from './offline';
 import { Home } from './screens/Home';
 import { MatchDetail } from './screens/MatchDetail';
 import { Matches } from './screens/Matches';
@@ -57,19 +59,30 @@ async function loadData(): Promise<Data | null> {
   const config = await loadConfig();
   if (!(await initAuth(config))) return null; // redirecting to sign-in
   initApi(config);
-  return { ...(await fetchAll()), vapidKey: config.vapidPublicKey ?? '' };
+  const vapidKey = config.vapidPublicKey ?? '';
+  try {
+    return { ...(await fetchAll()), vapidKey };
+  } catch (e) {
+    // Server unreachable or failing: show what was loaded last time. A rejected sign-in (401/403) is not that.
+    const kept = e instanceof TypeError || /\(5\d\d\)/.test(String(e)) ? readSnapshot() : null;
+    if (!kept) throw e;
+    return { ...kept.data, vapidKey, offlineAt: kept.at };
+  }
 }
 
 async function fetchAll(): Promise<Omit<Data, 'vapidKey'>> {
+  let complete = true; // a silent fallback below must not overwrite the kept copy
   const [profile, ratings, matches, upcoming, trophies, photos] = await Promise.all([
     api.profile(),
     api.ratings(),
     api.matches(),
     api.upcoming(),
-    api.trophies().catch(() => ({ trophies: [], suggestions: [] })),
-    api.photos().catch(() => []),
+    api.trophies().catch(() => ((complete = false), { trophies: [], suggestions: [] })),
+    api.photos().catch(() => ((complete = false), [])),
   ]);
-  return { profile, ratings, matches, upcoming, trophies, photos };
+  const all = { profile, ratings, matches, upcoming, trophies, photos };
+  if (complete && !isMock()) saveSnapshot(all);
+  return all;
 }
 
 export function App() {
@@ -125,6 +138,19 @@ export function App() {
     if (ready && !isMock()) document.addEventListener('visibilitychange', onBack);
     return () => document.removeEventListener('visibilitychange', onBack);
   }, [ready]);
+  const offline = state.kind === 'ready' && state.data.offlineAt !== undefined;
+  useEffect(() => {
+    // Back online: replace the kept copy with fresh data.
+    // The connection may not be usable the moment the browser says online: try a few times.
+    const onOnline = async () => {
+      for (let i = 0; i < 4; i++) {
+        if (await refresh().then(() => true, () => false)) return;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    };
+    if (offline) window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [offline]);
   useEffect(() => {
     if (!ready || isMock()) return;
     const visible = () => document.visibilityState === 'visible';
@@ -235,6 +261,11 @@ export function App() {
   );
   return (
     <div class="page">
+      {data.offlineAt !== undefined && (
+        <p class="offline-note" role="status">
+          Can’t reach the server: showing data from {formatTime(new Date(data.offlineAt))}. Changes need a connection. <button class="link" type="button" onClick={() => void refresh().catch(() => undefined)}>Retry</button>
+        </p>
+      )}
       {screen}
       <TabBar active={detailId || withName ? '#/matches' : hash === '#/stats' || hash === '#/recap' ? '#/' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/me'].includes(hash) ? hash : '#/'} />
     </div>

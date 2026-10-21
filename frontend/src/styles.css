@@ -119,6 +119,7 @@ a.card.tap { display: flex; }
 .year-chart i { display: block; background: var(--win); border-radius: 5px 5px 0 0; margin-bottom: 4px; }
 .link { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--accent); cursor: pointer; }
 .link:disabled { color: var(--muted); }
+.offline-note { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: var(--card); color: var(--muted); font-size: 14px; }
 .link-button { width: 100%; min-height: 44px; background: none; border: 0; color: var(--accent); font-weight: 600; }
 
 .between { justify-content: space-between; }

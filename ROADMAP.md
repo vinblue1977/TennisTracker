@@ -51,7 +51,7 @@ Finished items move to **Done**. Cost so far ≈ $0; target ≈ $0.05–0.15/mon
 - [x] Export your data: "Download my matches (CSV)" on the Me tab
 - [x] Season recap card: Stats → Season recap; shareable 1080×1350 image
 - [x] Streaks and form on Home ("W4", last 5, longest win streak)
-- [ ] Offline read-only mode: service worker caches the last Home and Matches payload
+- [x] Offline read-only mode: service worker keeps the app files; the last data is kept on the phone and shown with an Offline note
 - [ ] Pre-match notes on the Next match card: head-to-head and your last note about the opponent
 
 ## Ideas: medium
