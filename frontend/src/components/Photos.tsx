@@ -42,7 +42,7 @@ export function PhotoStrip({ owner, photos, onPhotos }: { owner: string; photos:
       <div class="row">
         <span class="eyebrow grow">Photos</span>
         <span class="muted">
-          {photos.length} {photos.length === 1 ? 'photo' : 'photos'} · max {MAX_PER_OWNER}
+          {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
         </span>
       </div>
       <div class="photo-strip">
