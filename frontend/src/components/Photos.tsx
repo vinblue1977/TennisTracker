@@ -181,7 +181,7 @@ function Viewer({ photos, index, onOpen, onClose, onPhotos }: { photos: Photo[];
   );
 }
 
-const CARD_PHOTO_MAX = 280; // px; keep in step with .match-photo img and .photo-wrap img
+const CARD_PHOTO_MAX = 280; // px; keep in step with the height of .match-photo img and .photo-wrap img
 
 /** Drag a window over the photo to choose which part of a tall photo the match and trophy cards show. */
 function Framer({ photo, onCancel, onSave, error }: { photo: Photo; onCancel: () => void; onSave: (focus: number) => void; error: string }) {
