@@ -170,7 +170,7 @@ function TrophyRow({ trophy: t, photos, onOpen, onPhotos }: { trophy: Trophy; ph
         <span style={{ fontSize: '22px' }}>{icon(t)}</span> {text}
       </span>
       <span class="photo-wrap">
-        <img src={cover.thumb ?? cover.url} style={{ objectPosition: `50% ${cover.focus}%` }} alt="" loading="lazy" decoding="async" onError={() => onPhotos()} />
+        <img src={cover.thumb ?? cover.url} style={{ objectPosition: `50% ${cover.focus}%` }} alt="" loading="lazy" onError={() => onPhotos()} />
         {photos.length > 1 && <span class="photo-count">+{photos.length - 1}</span>}
       </span>
     </button>

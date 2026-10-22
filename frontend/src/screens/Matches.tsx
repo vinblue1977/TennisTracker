@@ -153,7 +153,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
               </div>
               {cover && (
                 <span class="match-photo">
-                  <img src={cover.thumb ?? cover.url} style={{ objectPosition: `50% ${cover.focus}%` }} alt="" loading="lazy" decoding="async" onError={() => onPhotos?.()} />
+                  <img src={cover.thumb ?? cover.url} style={{ objectPosition: `50% ${cover.focus}%` }} alt="" loading="lazy" onError={() => onPhotos?.()} />
                 </span>
               )}
             </a>
