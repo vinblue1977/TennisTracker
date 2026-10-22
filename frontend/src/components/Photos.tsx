@@ -183,6 +183,23 @@ function Viewer({ photos, index, onOpen, onClose, onPhotos }: { photos: Photo[];
 
 const CARD_PHOTO_MAX = 280; // px; keep in step with the height of .match-photo img and .photo-wrap img
 
+/** A card's cover photo: as tall as the photo itself up to CARD_PHOTO_MAX, with a pixel height so iPhone paints it fully. */
+export function CardPhoto({ photo, onPhotos }: { photo: Photo; onPhotos: () => unknown }) {
+  const [height, setHeight] = useState(CARD_PHOTO_MAX);
+  const img = useRef<HTMLImageElement>(null);
+  const fit = () => {
+    const el = img.current;
+    if (el?.naturalWidth && el.clientWidth) setHeight(Math.min(CARD_PHOTO_MAX, Math.round((el.clientWidth * el.naturalHeight) / el.naturalWidth)));
+  };
+  useEffect(() => {
+    setHeight(CARD_PHOTO_MAX);
+    fit();
+    addEventListener('resize', fit); // rotating the phone changes the card width
+    return () => removeEventListener('resize', fit);
+  }, [photo.id]);
+  return <img ref={img} src={photo.thumb ?? photo.url} style={{ height: `${height}px`, objectPosition: `50% ${photo.focus}%` }} alt="" loading="lazy" onLoad={fit} onError={() => onPhotos()} />;
+}
+
 /** Drag a window over the photo to choose which part of a tall photo the match and trophy cards show. */
 function Framer({ photo, onCancel, onSave, error }: { photo: Photo; onCancel: () => void; onSave: (focus: number) => void; error: string }) {
   const [focus, setFocus] = useState(photo.focus);

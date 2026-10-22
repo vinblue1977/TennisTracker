@@ -69,7 +69,7 @@ a.hero { color: inherit; text-decoration: none; }
 .score { font: 600 19px var(--display); white-space: nowrap; }
 
 .match-photo { position: relative; display: block; margin-top: 4px; }
-.match-photo img { display: block; width: 100%; height: 280px; object-fit: cover; object-position: 50% 20%; border-radius: 12px; background: rgba(255, 255, 255, 0.05); }
+.match-photo img { display: block; width: 100%; height: 280px; /* until the photo loads; CardPhoto then sets the real height */ object-fit: cover; object-position: 50% 20%; border-radius: 12px; background: rgba(255, 255, 255, 0.05); }
 .match { margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--card); border-radius: 16px; padding: 12px 14px; color: var(--text); text-decoration: none; }
 .year { margin: 8px 4px 0; font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: 0.6px; }
 
