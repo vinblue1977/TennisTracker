@@ -5,6 +5,7 @@ import { MatchForm, blankMatch } from '../components/MatchForm';
 import { formatDate, levelName, matchDate, ratingHistory, shortName, wtnAfter } from '../data';
 import { UpcomingCard } from '../components/Upcoming';
 import { forOwner } from '../photos';
+import { CardPhoto } from '../components/Photos';
 import type { Data, Match } from '../types';
 
 const result = (m: Match) => (m.won === true ? 'W' : m.won === false ? 'L' : 'N');
@@ -153,7 +154,7 @@ export function Matches({ data, upcomingTab = false, upsetsOnly = false, person 
               </div>
               {cover && (
                 <span class="match-photo">
-                  <img src={cover.thumb ?? cover.url} style={{ objectPosition: `50% ${cover.focus}%` }} alt="" loading="lazy" onError={() => onPhotos?.()} />
+                  <CardPhoto photo={cover} onPhotos={() => onPhotos?.()} />
                 </span>
               )}
             </a>
