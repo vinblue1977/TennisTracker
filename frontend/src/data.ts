@@ -124,11 +124,11 @@ export function teamAverage(players: Player[]): number | null {
   return round2((values as number[]).reduce((a, b) => a + b, 0) / values.length);
 }
 
-/** "Michael Smith" -> "Michael S." */
+/** "Michael Smith" -> "Michael S" */
 export function shortName(name: string): string {
   const parts = name.trim().split(/\s+/);
   const last = parts.length > 1 ? parts.at(-1) : undefined;
-  return last ? `${parts.slice(0, -1).join(' ')} ${last[0]}.` : (parts[0] ?? '');
+  return last ? `${parts.slice(0, -1).join(' ')} ${last[0]}` : (parts[0] ?? '');
 }
 
 export function formatDate(iso: string, withYear = false): string {
