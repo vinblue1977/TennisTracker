@@ -140,12 +140,6 @@ export function Me({ data, onCalendar, onWtnSync, onRatings, onTrophies, onPhoto
         </details>
       </Collapsible>
       <section class="list">
-        <a class="item" href="#/stats">
-          <span class="grow">Stats</span>
-          <span class="muted" aria-hidden="true">›</span>
-        </a>
-      </section>
-      <section class="list">
         <button class="item" type="button" style={{ width: '100%', border: 0, background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer' }} onClick={download}>
           <span class="grow" style={{ textAlign: 'left' }}>Download my matches (CSV)</span>
           <span class="muted" aria-hidden="true">↓</span>

@@ -48,9 +48,6 @@ export function Stats({ data }: { data: Data }) {
   const years = byYear(played);
   return (
     <main class="screen">
-      <a class="back" href="#/">
-        ‹ Home
-      </a>
       <h1 class="title">Stats</h1>
       <div class="eyebrow">Doubles</div>
       <section class="card">
