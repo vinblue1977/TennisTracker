@@ -58,8 +58,8 @@ describe('teamAverage and shortName', () => {
     expect(teamAverage([{ name: 'A', wtn: 27 }, { name: 'B', wtn: null }])).toBeNull();
   });
   it('shortens surnames', () => {
-    expect(shortName('Pat Partner')).toBe('Pat P.');
-    expect(shortName('Juan Pablo Example')).toBe('Juan Pablo E.');
+    expect(shortName('Pat Partner')).toBe('Pat P');
+    expect(shortName('Juan Pablo Example')).toBe('Juan Pablo E');
     expect(shortName('Solo')).toBe('Solo');
   });
 });
@@ -118,7 +118,7 @@ describe('stats', () => {
   });
   it('merges one person written two ways', () => {
     const two = [m('2024-05-01', true, 'Kesavan J', 'Bo'), m('2024-06-01', false, 'Kesavan Jones', 'Bo')];
-    expect(tally(two, (x) => x.partners)).toEqual([{ name: 'Kesavan J.', wins: 1, losses: 1 }]);
+    expect(tally(two, (x) => x.partners)).toEqual([{ name: 'Kesavan J', wins: 1, losses: 1 }]);
   });
   it('rounds win %', () => {
     expect(winPct({ wins: 2, losses: 1 })).toBe(67);
