@@ -267,7 +267,7 @@ export function App() {
         </p>
       )}
       {screen}
-      <TabBar active={detailId || withName ? '#/matches' : hash === '#/recap' ? '#/stats' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/stats', '#/me'].includes(hash) ? hash : '#/'} />
+      <TabBar active={withName ? '#/stats' : detailId ? '#/matches' : hash === '#/recap' ? '#/stats' : hash === '#/upcoming' || hash === '#/upsets' ? '#/matches' : ['#/matches', '#/stats', '#/me'].includes(hash) ? hash : '#/'} />
     </div>
   );
 }
