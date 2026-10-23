@@ -241,7 +241,7 @@ export function App() {
   ) : detailId ? (
     <MatchDetail key={detailId} data={data} id={safeDecode(detailId)} onSave={onSave} onPhotos={onPhotos} onMatches={onMatches} />
   ) : withName ? (
-    <Matches key={hash} data={data} person={safeDecode(withName)} role={withMatch?.[1] as 'partner' | 'opponent' | undefined} onPhotos={onPhotos} />
+    <Matches key={hash} data={data} person={safeDecode(withName).replace(/\.$/, '')} role={withMatch?.[1] as 'partner' | 'opponent' | undefined} onPhotos={onPhotos} />
   ) : hash === '#/recap' ? (
     <Recap data={data} />
   ) : hash === '#/stats' ? (
