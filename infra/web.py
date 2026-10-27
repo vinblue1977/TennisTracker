@@ -112,6 +112,9 @@ class Web(Construct):
             price_class=cloudfront.PriceClass.PRICE_CLASS_100,
         )
         site_url = f"https://{distribution.distribution_domain_name}"
+        # localhost is allowed only when deploying with `-c devOrigin=true`
+        dev_origins = [DEV_ORIGIN] if str(self.node.try_get_context("devOrigin")).lower() == "true" else []
+        dev_urls = [f"{o}/" for o in dev_origins]
 
         # ---- photos: private bucket; the app uploads with short-lived signed forms and views with signed links
         photos = s3.Bucket(
@@ -182,8 +185,8 @@ class Web(Construct):
             o_auth=cognito.OAuthSettings(
                 flows=cognito.OAuthFlows(authorization_code_grant=True),
                 scopes=[cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL],
-                callback_urls=[f"{site_url}/", f"{DEV_ORIGIN}/"],
-                logout_urls=[f"{site_url}/", f"{DEV_ORIGIN}/"],
+                callback_urls=[f"{site_url}/", *dev_urls],
+                logout_urls=[f"{site_url}/", *dev_urls],
             ),
             supported_identity_providers=[cognito.UserPoolClientIdentityProvider.COGNITO],
         )
@@ -248,7 +251,7 @@ class Web(Construct):
             create_default_stage=False,
             default_authorizer=authorizers.HttpUserPoolAuthorizer("Cognito", pool, user_pool_clients=[client]),  # pyright: ignore[reportArgumentType]
             cors_preflight=apigw.CorsPreflightOptions(
-                allow_origins=[site_url, DEV_ORIGIN],
+                allow_origins=[site_url, *dev_origins],
                 allow_methods=[
                     apigw.CorsHttpMethod.GET,
                     apigw.CorsHttpMethod.PUT,
