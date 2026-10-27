@@ -234,3 +234,10 @@ def test_backup_runs_sundays_into_a_private_bucket_and_can_only_add_files() -> N
         s for p in t.find_resources("AWS::IAM::Policy").values() for s in p["Properties"]["PolicyDocument"]["Statement"]
     ]
     assert len([s for s in statements if s["Action"] == "s3:PutObject"]) == 1
+
+
+def test_localhost_is_allowed_only_with_the_dev_origin_context() -> None:
+    assert "http://localhost:5173" not in json.dumps(_template().to_json())
+    dev = _template({"githubRepo": REPO, "devOrigin": "true"})
+    dev.has_resource_properties("AWS::ApiGatewayV2::Api", {"CorsConfiguration": {"AllowOrigins": Match.array_with(["http://localhost:5173"])}})
+    dev.has_resource_properties("AWS::Cognito::UserPoolClient", {"CallbackURLs": Match.array_with(["http://localhost:5173/"])})
