@@ -227,16 +227,15 @@ class Web(Construct):
             log_group=logs.LogGroup(self, "ApiLogs", retention=logs.RetentionDays.TWO_WEEKS),
         )
         table.grant_read_write_data(fn)
-        # The app's own function: a burst of crashes (3 in 5 minutes) or throttled calls emails the alert topic.
-        for metric_name, metric in (("Errors", fn.metric_errors), ("Throttles", fn.metric_throttles)):
-            metric(period=Duration.minutes(5)).create_alarm(
-                self,
-                f"Api{metric_name}",
-                threshold=3,
-                evaluation_periods=1,
-                treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
-                alarm_description=f"The app's API Lambda reported {metric_name.lower()}",
-            ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
+        # The app's own function: a burst of crashes (3 in 5 minutes) emails the alert topic.
+        fn.metric_errors(period=Duration.minutes(5)).create_alarm(
+            self,
+            "ApiErrors",
+            threshold=3,
+            evaluation_periods=1,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+            alarm_description="The app's API Lambda reported errors",
+        ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
         fn.add_to_role_policy(  # photos only: add, view and delete objects (no listing, no bucket settings)
             iam.PolicyStatement(
                 actions=["s3:PutObject", "s3:GetObject", "s3:DeleteObject"], resources=[photos.arn_for_objects("*")]
