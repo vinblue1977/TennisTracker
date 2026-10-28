@@ -5,6 +5,7 @@ from pathlib import Path
 
 from aws_cdk import CfnOutput, DefaultStackSynthesizer, Duration, RemovalPolicy, Stack
 from aws_cdk import aws_budgets as budgets
+from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_cloudwatch_actions as cw_actions
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_events as events
@@ -56,18 +57,18 @@ class TennisTrackerStack(Stack):
         )
         self.push_env = {"VAPID_KEY_PARAM": VAPID_PARAM, "VAPID_SUBJECT": "https://github.com/vinblue1977/TennisTracker"}
         # ITF publishes ratings (and their matches) around Wednesday: sync twice that day, once more Thursday as a safety net.
+        self.scheduled_fns: list[lambda_.Function] = []
         wtn_times = [
             events.Schedule.cron(minute="0", hour="11,23", week_day="WED"),
             events.Schedule.cron(minute="0", hour="11", week_day="THU"),
         ]
-        wtn = self._scheduled("WtnSync", "wtn_sync.handler.handler", wtn_times, topic, "WTN sync")
+        wtn = self._scheduled("WtnSync", "wtn_sync.handler.handler", wtn_times, topic)
         calendar = self._scheduled(
-            "CalendarSync", "calendar_sync.handler.handler", [events.Schedule.rate(Duration.minutes(15))], topic, "Calendar sync"
+            "CalendarSync", "calendar_sync.handler.handler", [events.Schedule.rate(Duration.minutes(15))], topic
         )
-        self._scheduled(
-            "Reminders", "push.reminders.handler", [events.Schedule.rate(Duration.minutes(15))], topic, "Match reminders"
-        )
+        self._scheduled("Reminders", "push.reminders.handler", [events.Schedule.rate(Duration.minutes(15))], topic)
         self._backup(topic)
+        self._crash_alarm(topic)
         site_dir = self.node.try_get_context("siteDir") or "frontend/dist"
         Web(
             self,
@@ -129,13 +130,28 @@ class TennisTrackerStack(Stack):
             removal_policy=RemovalPolicy.RETAIN,
         )
         fn = self._scheduled(
-            "Backup", "backup.handler.handler", [events.Schedule.cron(minute="0", hour="6", week_day="SUN")], topic, "Backup"
+            "Backup", "backup.handler.handler", [events.Schedule.cron(minute="0", hour="6", week_day="SUN")], topic
         )
         fn.add_environment("BACKUP_BUCKET", bucket.bucket_name)
         fn.add_to_role_policy(iam.PolicyStatement(actions=["s3:PutObject"], resources=[bucket.arn_for_objects("backups/*")]))
         NagSuppressions.add_resource_suppressions(
             bucket, [NagPackSuppression(id="AwsSolutions-S1", reason="Backups only; access logging costs extra")]
         )
+
+    def _crash_alarm(self, topic: sns.Topic) -> None:
+        """One alarm for every scheduled Lambda (each alarm past the free 10 costs $0.10/month); the logs say which one."""
+        metrics = {f"e{i}": fn.metric_errors(period=Duration.days(1)) for i, fn in enumerate(self.scheduled_fns)}
+        total = cloudwatch.MathExpression(
+            expression="+".join(f"FILL({k},0)" for k in metrics), using_metrics=metrics, period=Duration.days(1)
+        )
+        total.create_alarm(
+            self,
+            "ScheduledErrors",
+            threshold=1,
+            evaluation_periods=1,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+            alarm_description="A scheduled Lambda crashed (WTN sync, calendar sync, reminders or backup)",
+        ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
 
     def _alert_topic(self) -> sns.Topic:
         topic = sns.Topic(self, "AlertTopic", enforce_ssl=True)
@@ -148,10 +164,8 @@ class TennisTrackerStack(Stack):
         )
         return topic
 
-    def _scheduled(
-        self, name: str, handler: str, schedules: list[events.Schedule], topic: sns.Topic, what: str
-    ) -> lambda_.Function:
-        """A Lambda on a schedule, with table access, 14-day logs and an email if it crashes."""
+    def _scheduled(self, name: str, handler: str, schedules: list[events.Schedule], topic: sns.Topic) -> lambda_.Function:
+        """A Lambda on a schedule, with table access and 14-day logs (crashes are covered by `_crash_alarm`)."""
         fn = lambda_.Function(
             self,
             name,
@@ -172,9 +186,7 @@ class TennisTrackerStack(Stack):
         for i, schedule in enumerate(schedules):
             suffix = "" if i == 0 else str(i + 1)
             events.Rule(self, f"{name}Schedule{suffix}", schedule=schedule, targets=[target])  # pyright: ignore[reportArgumentType]
-        fn.metric_errors(period=Duration.days(1)).create_alarm(
-            self, f"{name}Errors", threshold=1, evaluation_periods=1, alarm_description=f"{what} Lambda crashed"
-        ).add_alarm_action(cw_actions.SnsAction(topic))  # pyright: ignore[reportArgumentType]
+        self.scheduled_fns.append(fn)
         CfnOutput(self, f"{name}Function", value=fn.function_name)
         NagSuppressions.add_resource_suppressions(
             fn,

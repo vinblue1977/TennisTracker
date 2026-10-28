@@ -120,15 +120,21 @@ def test_wtn_sync_runs_wed_thu_and_alerts_on_crash() -> None:
     for expression in ("cron(0 11,23 ? * WED *)", "cron(0 11 ? * THU *)"):
         rule = {"ScheduleExpression": expression, "Targets": [target]}
         template.has_resource_properties("AWS::Events::Rule", rule)
-    template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": "Errors", "Threshold": 1})
     template.has_resource_properties("AWS::SNS::Subscription", {"Protocol": "email", "Endpoint": "alerts@example.com"})
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 14})
 
 
-def test_api_alarms_budget_and_widget_throttle() -> None:
+def test_two_alarms_total() -> None:
     template = _template({"alertEmail": "alerts@example.com"})
-    for metric in ("Errors", "Throttles"):
-        template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": metric, "Threshold": 3, "Period": 300})
+    template.resource_count_is("AWS::CloudWatch::Alarm", 2)
+    template.has_resource_properties("AWS::CloudWatch::Alarm", {"MetricName": "Errors", "Threshold": 3, "Period": 300})
+    template.has_resource_properties(
+        "AWS::CloudWatch::Alarm", {"Threshold": 1, "Metrics": Match.array_with([Match.object_like({"Id": "e3"})])}
+    )
+
+
+def test_budget_and_widget_throttle() -> None:
+    template = _template({"alertEmail": "alerts@example.com"})
     template.has_resource_properties(
         "AWS::Budgets::Budget", {"Budget": Match.object_like({"BudgetLimit": {"Amount": 5, "Unit": "USD"}})}
     )
