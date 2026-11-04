@@ -59,42 +59,51 @@ class Web(Construct):
         photo_bucket_name = f"{auth_prefix}-photos"
         photo_host = f"{photo_bucket_name}.s3.{region}.amazonaws.com"
         auth_url = f"https://{auth_prefix}.auth.{region}.amazoncognito.com"
-        headers = cloudfront.ResponseHeadersPolicy(
-            self,
-            "SecurityHeaders",
-            security_headers_behavior=cloudfront.ResponseSecurityHeadersBehavior(
-                content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
-                    content_security_policy=(
-                        "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
-                        f"img-src 'self' data: https://{photo_host}; "
-                        "manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; "
-                        f"connect-src 'self' https://*.execute-api.{region}.amazonaws.com {auth_url} https://{photo_host}; "
-                        "upgrade-insecure-requests"
-                    ),
-                    override=True,
-                ),
-                strict_transport_security=cloudfront.ResponseHeadersStrictTransportSecurity(
-                    access_control_max_age=Duration.days(365), include_subdomains=True, override=True
-                ),
-                content_type_options=cloudfront.ResponseHeadersContentTypeOptions(override=True),
-                frame_options=cloudfront.ResponseHeadersFrameOptions(
-                    frame_option=cloudfront.HeadersFrameOption.DENY, override=True
-                ),
-                referrer_policy=cloudfront.ResponseHeadersReferrerPolicy(
-                    referrer_policy=cloudfront.HeadersReferrerPolicy.NO_REFERRER, override=True
-                ),
-            ),
-            custom_headers_behavior=cloudfront.ResponseCustomHeadersBehavior(
-                custom_headers=[
-                    cloudfront.ResponseCustomHeader(
-                        header="Permissions-Policy",
-                        value="camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+
+        def security_headers(construct_id: str, cache_control: str) -> cloudfront.ResponseHeadersPolicy:
+            """Security headers plus a Cache-Control value, so each kind of file gets its own caching."""
+            return cloudfront.ResponseHeadersPolicy(
+                self,
+                construct_id,
+                security_headers_behavior=cloudfront.ResponseSecurityHeadersBehavior(
+                    content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
+                        content_security_policy=(
+                            "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
+                            f"img-src 'self' data: https://{photo_host}; "
+                            "manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; "
+                            "base-uri 'none'; form-action 'none'; "
+                            f"connect-src 'self' https://*.execute-api.{region}.amazonaws.com {auth_url} https://{photo_host}; "
+                            "upgrade-insecure-requests"
+                        ),
                         override=True,
                     ),
-                    cloudfront.ResponseCustomHeader(header="Cross-Origin-Opener-Policy", value="same-origin", override=True),
-                ]
-            ),
-        )
+                    strict_transport_security=cloudfront.ResponseHeadersStrictTransportSecurity(
+                        access_control_max_age=Duration.days(365), include_subdomains=True, override=True
+                    ),
+                    content_type_options=cloudfront.ResponseHeadersContentTypeOptions(override=True),
+                    frame_options=cloudfront.ResponseHeadersFrameOptions(
+                        frame_option=cloudfront.HeadersFrameOption.DENY, override=True
+                    ),
+                    referrer_policy=cloudfront.ResponseHeadersReferrerPolicy(
+                        referrer_policy=cloudfront.HeadersReferrerPolicy.NO_REFERRER, override=True
+                    ),
+                ),
+                custom_headers_behavior=cloudfront.ResponseCustomHeadersBehavior(
+                    custom_headers=[
+                        cloudfront.ResponseCustomHeader(header="Cache-Control", value=cache_control, override=True),
+                        cloudfront.ResponseCustomHeader(
+                            header="Permissions-Policy",
+                            value="camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+                            override=True,
+                        ),
+                        cloudfront.ResponseCustomHeader(header="Cross-Origin-Opener-Policy", value="same-origin", override=True),
+                    ]
+                ),
+            )
+
+        # Browsers revalidate on every load (cheap 304s), so a deploy is picked up at once. A long "immutable" cache on
+        # assets/ is unsafe here: the SPA fallback below would turn a missing asset into a cached 200 index.html.
+        headers = security_headers("SecurityHeaders", "no-cache")
         distribution = cloudfront.Distribution(
             self,
             "Site",

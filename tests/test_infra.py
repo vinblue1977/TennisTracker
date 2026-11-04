@@ -249,3 +249,17 @@ def test_localhost_is_allowed_only_with_the_dev_origin_context() -> None:
         "AWS::ApiGatewayV2::Api", {"CorsConfiguration": {"AllowOrigins": Match.array_with(["http://localhost:5173"])}}
     )
     dev.has_resource_properties("AWS::Cognito::UserPoolClient", {"CallbackURLs": Match.array_with(["http://localhost:5173/"])})
+
+
+def test_files_are_revalidated_by_browsers_and_nothing_is_cached_immutably() -> None:
+    template = _template()
+    policies = template.find_resources("AWS::CloudFront::ResponseHeadersPolicy")
+    values = [
+        item["Value"]
+        for policy in policies.values()
+        for item in policy["Properties"]["ResponseHeadersPolicyConfig"]["CustomHeadersConfig"]["Items"]
+        if item["Header"] == "Cache-Control"
+    ]
+    assert values == ["no-cache"]  # the SPA fallback turns missing files into index.html, so no long caching
+    (distribution,) = template.find_resources("AWS::CloudFront::Distribution").values()
+    assert "CacheBehaviors" not in distribution["Properties"]["DistributionConfig"]
