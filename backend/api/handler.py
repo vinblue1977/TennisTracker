@@ -91,7 +91,8 @@ def _bootstrap(table: Any, user: str) -> dict[str, Any]:
 
     def optional(route: str, handler_for: Any) -> Any:
         try:
-            return json.loads(handler_for(table, user, route, "", None)["body"])
+            response = handler_for(table, user, route, "", None)
+            return json.loads(response["body"]) if response["statusCode"] == 200 else None
         except Exception:  # noqa: BLE001 - the app shows these as empty and keeps its saved copy
             logging.getLogger().exception("bootstrap: %s failed", route)
             return None

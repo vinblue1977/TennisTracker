@@ -73,6 +73,13 @@ def test_bootstrap_nulls_trophies_and_photos_when_they_fail(table, monkeypatch) 
     assert status == 200 and body["trophies"] is None and body["photos"] is None and body["matches"]
 
 
+def test_bootstrap_nulls_trophies_and_photos_on_error_responses(table, monkeypatch) -> None:
+    monkeypatch.setattr(api, "_trophies", lambda *_a: api._json(500, {"error": "x"}))
+    monkeypatch.setattr(api, "_photos", lambda *_a: api._json(400, {"error": "x"}))
+    body = call("GET /me/bootstrap")[1]
+    assert body["trophies"] is None and body["photos"] is None
+
+
 def test_ratings_and_matches_are_only_the_mapped_users(table) -> None:
     assert call("GET /me/ratings")[1]["ratings"][0]["value"] == 25
     matches = call("GET /me/matches")[1]["matches"]
