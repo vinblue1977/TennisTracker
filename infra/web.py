@@ -272,6 +272,7 @@ class Web(Construct):
         )
         integration = integrations.HttpLambdaIntegration("ApiIntegration", fn)  # pyright: ignore[reportArgumentType]
         for method, path in (
+            (apigw.HttpMethod.GET, "/me/bootstrap"),
             (apigw.HttpMethod.GET, "/me/profile"),
             (apigw.HttpMethod.GET, "/me/ratings"),
             (apigw.HttpMethod.PUT, "/me/ratings"),

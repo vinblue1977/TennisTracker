@@ -51,6 +51,28 @@ def test_profile_masks_tennis_id_and_shows_sync(table) -> None:
     assert body["sync"]["consecutiveFailures"] is None  # present for the app's sync health, empty until a failure
 
 
+def test_bootstrap_returns_everything_the_app_loads_and_matches_the_separate_routes(table, monkeypatch) -> None:
+    monkeypatch.setenv("PHOTO_BUCKET", "photos")
+    status, body = call("GET /me/bootstrap")
+    assert status == 200 and set(body) == {"profile", "ratings", "matches", "upcoming", "trophies", "photos"}
+    assert body["profile"] == call("GET /me/profile")[1]
+    assert body["ratings"] == call("GET /me/ratings")[1]["ratings"]
+    assert body["matches"] == call("GET /me/matches")[1]["matches"]
+    assert body["upcoming"] == call("GET /me/upcoming")[1]["upcoming"]
+    assert body["trophies"] == call("GET /me/trophies")[1] and body["photos"] == call("GET /me/photos")[1]["photos"]
+    assert call("GET /me/bootstrap", sub=None)[0] == 401
+
+
+def test_bootstrap_nulls_trophies_and_photos_when_they_fail(table, monkeypatch) -> None:
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(api, "_trophies", boom)
+    monkeypatch.setattr(api, "_photos", boom)
+    status, body = call("GET /me/bootstrap")
+    assert status == 200 and body["trophies"] is None and body["photos"] is None and body["matches"]
+
+
 def test_ratings_and_matches_are_only_the_mapped_users(table) -> None:
     assert call("GET /me/ratings")[1]["ratings"][0]["value"] == 25
     matches = call("GET /me/matches")[1]["matches"]
