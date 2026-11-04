@@ -251,16 +251,15 @@ def test_localhost_is_allowed_only_with_the_dev_origin_context() -> None:
     dev.has_resource_properties("AWS::Cognito::UserPoolClient", {"CallbackURLs": Match.array_with(["http://localhost:5173/"])})
 
 
-def test_app_shell_is_revalidated_and_hashed_assets_are_cached_for_a_year() -> None:
+def test_files_are_revalidated_by_browsers_and_nothing_is_cached_immutably() -> None:
     template = _template()
-    cache_values = sorted(
+    policies = template.find_resources("AWS::CloudFront::ResponseHeadersPolicy")
+    values = [
         item["Value"]
-        for policy in template.find_resources("AWS::CloudFront::ResponseHeadersPolicy").values()
+        for policy in policies.values()
         for item in policy["Properties"]["ResponseHeadersPolicyConfig"]["CustomHeadersConfig"]["Items"]
         if item["Header"] == "Cache-Control"
-    )
-    assert cache_values == ["no-cache", "public, max-age=31536000, immutable"]
-    template.has_resource_properties(
-        "AWS::CloudFront::Distribution",
-        {"DistributionConfig": Match.object_like({"CacheBehaviors": [Match.object_like({"PathPattern": "assets/*"})]})},
-    )
+    ]
+    assert values == ["no-cache"]  # the SPA fallback turns missing files into index.html, so no long caching
+    (distribution,) = template.find_resources("AWS::CloudFront::Distribution").values()
+    assert "CacheBehaviors" not in distribution["Properties"]["DistributionConfig"]

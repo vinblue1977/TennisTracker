@@ -101,9 +101,9 @@ class Web(Construct):
                 ),
             )
 
-        # App shell and config change on every deploy: always revalidate. Hashed files in assets/ never change.
+        # Browsers revalidate on every load (cheap 304s), so a deploy is picked up at once. A long "immutable" cache on
+        # assets/ is unsafe here: the SPA fallback below would turn a missing asset into a cached 200 index.html.
         headers = security_headers("SecurityHeaders", "no-cache")
-        asset_headers = security_headers("AssetHeaders", "public, max-age=31536000, immutable")
         distribution = cloudfront.Distribution(
             self,
             "Site",
@@ -112,13 +112,6 @@ class Web(Construct):
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                 response_headers_policy=headers,
             ),
-            additional_behaviors={
-                "assets/*": cloudfront.BehaviorOptions(
-                    origin=origins.S3BucketOrigin.with_origin_access_control(bucket),  # pyright: ignore[reportArgumentType]
-                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    response_headers_policy=asset_headers,
-                )
-            },
             default_root_object="index.html",
             # The app routes in the browser: unknown paths load the app.
             error_responses=[
