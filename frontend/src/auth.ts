@@ -117,14 +117,27 @@ export async function login(): Promise<void> {
 
 export const addPasskeyUrl = () => authUrl('/passkeys/add', { redirect_uri: redirectUri() });
 
-export function logout(): void {
+export async function logout(): Promise<void> {
+  const refresh = load()?.refresh_token;
+  // Clear local state first so sign-out can't be blocked, doubled or undone by an in-flight refresh.
   try {
     sessionStorage.removeItem(STORE); // legacy location
   } catch {
     /* ignore */
   }
   localStorage.removeItem(STORE);
+  refreshing = undefined;
   clearOffline();
+  if (refresh && cfg) {
+    // Revoke the refresh token server-side: best effort, 3 s at most.
+    await fetch(`${cfg.authUrl}/oauth2/revoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: cfg.clientId, token: refresh }),
+      keepalive: true,
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => undefined);
+  }
   location.assign(authUrl('/logout', { logout_uri: redirectUri() }));
 }
 
