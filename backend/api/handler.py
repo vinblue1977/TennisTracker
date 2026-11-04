@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 import os
 import re
 import secrets
@@ -37,6 +38,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return _json(401, {"error": "unauthorized"})
     user = _user_id(table, sub)
     route = event.get("routeKey", "")
+    if route == "GET /me/bootstrap":
+        return _json(200, _bootstrap(table, user))
     if route == "GET /me/profile":
         return _json(200, _profile(table, user))
     if route == "GET /me/ratings":
@@ -81,6 +84,27 @@ def _items(table: Any, user: str, prefix: str) -> list[dict[str, Any]]:
         if "LastEvaluatedKey" not in page:
             return found
         kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+
+
+def _bootstrap(table: Any, user: str) -> dict[str, Any]:
+    """Everything the app loads on open, in one call. Trophies and photos are optional: null if either fails."""
+
+    def optional(route: str, handler_for: Any) -> Any:
+        try:
+            response = handler_for(table, user, route, "", None)
+            return json.loads(response["body"]) if response["statusCode"] == 200 else None
+        except Exception:  # noqa: BLE001 - the app shows these as empty and keeps its saved copy
+            logging.getLogger().exception("bootstrap: %s failed", route)
+            return None
+
+    return {
+        "profile": _profile(table, user),
+        "ratings": _items(table, user, "RATING#"),
+        "matches": _matches(table, user),
+        "upcoming": [_public(i) for i in _items(table, user, "UPCOMING#")],
+        "trophies": optional("GET /me/trophies", _trophies),
+        "photos": (optional("GET /me/photos", _photos) or {}).get("photos"),
+    }
 
 
 def _profile(table: Any, user: str) -> dict[str, Any]:

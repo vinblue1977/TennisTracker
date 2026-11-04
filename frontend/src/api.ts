@@ -36,6 +36,8 @@ async function call<T>(path: string, init: RequestInit = {}, retry = true): Prom
 }
 
 export const api = {
+  bootstrap: () =>
+    call<{ profile: Profile; ratings: Rating[]; matches: Match[]; upcoming: Upcoming[]; trophies: Data['trophies'] | null; photos: Photo[] | null }>('/me/bootstrap'),
   profile: () => call<Profile>('/me/profile'),
   ratings: () => call<{ ratings: Rating[] }>('/me/ratings').then((r) => r.ratings),
   matches: () => call<{ matches: Match[] }>('/me/matches').then((r) => r.matches),

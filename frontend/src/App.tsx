@@ -71,15 +71,12 @@ async function loadData(): Promise<Data | null> {
 }
 
 async function fetchAll(): Promise<Omit<Data, 'vapidKey'>> {
-  let complete = true; // a silent fallback below must not overwrite the kept copy
-  const [profile, ratings, matches, upcoming, trophies, photos] = await Promise.all([
-    api.profile(),
-    api.ratings(),
-    api.matches(),
-    api.upcoming(),
-    api.trophies().catch(() => ((complete = false), { trophies: [], suggestions: [] })),
-    api.photos().catch(() => ((complete = false), [])),
-  ]);
+  const b = await api.bootstrap(); // one request instead of six
+  // Trophies or photos that failed on the server come back null: show them empty, but keep the saved copy.
+  const complete = b.trophies !== null && b.photos !== null;
+  const trophies = b.trophies ?? { trophies: [], suggestions: [] };
+  const photos = b.photos ?? [];
+  const { profile, ratings, matches, upcoming } = b;
   const all = { profile, ratings, matches, upcoming, trophies, photos };
   if (complete && !isMock()) saveSnapshot(all);
   return all;
