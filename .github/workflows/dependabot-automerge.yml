@@ -17,7 +17,10 @@ permissions: {}  # the token below does the work; GITHUB_TOKEN gets nothing
 jobs:
   # Turns on auto-merge; GitHub merges when the required checks pass and the branch is up to date.
   enable:
-    if: github.event.action != 'closed' && github.event.pull_request.user.login == 'dependabot[bot]'
+    # The actor check keeps a human's extra commit on a Dependabot branch from (re-)enabling auto-merge.
+    if: >-
+      github.event.action != 'closed' && github.actor == 'dependabot[bot]'
+      && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
     timeout-minutes: 5
     steps:
@@ -33,6 +36,9 @@ jobs:
     if: >-
       github.event.action == 'closed' && github.event.pull_request.merged
       && github.event.pull_request.user.login == 'dependabot[bot]'
+    concurrency:
+      group: dependabot-rebase  # overlapping merges queue instead of racing each other's rebases
+      cancel-in-progress: false
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
     timeout-minutes: 5
     steps:
