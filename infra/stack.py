@@ -86,7 +86,7 @@ class TennisTrackerStack(Stack):
 
         github_repo: str = self.node.try_get_context("githubRepo") or ""
         if github_repo:
-            self._github_deploy_role(github_repo, web.api_fn)  # pyright: ignore[reportArgumentType]
+            self._github_deploy_role(github_repo, web.api_fn)
 
     def _budget(self) -> None:
         """Emails the alert address at 80% of the monthly limit (actual) and 100% (forecast). Two budgets are free."""
@@ -206,7 +206,7 @@ class TennisTrackerStack(Stack):
         )
         return fn
 
-    def _github_deploy_role(self, github_repo: str, api_fn: lambda_.IFunction) -> None:
+    def _github_deploy_role(self, github_repo: str, api_fn: lambda_.Function) -> None:
         """Role for GitHub Actions in this repo's production environment. Reuses the account's OIDC provider."""
         if not re.fullmatch(r"[\w.-]+(@\d+)?/[\w.-]+(@\d+)?", github_repo):
             raise ValueError("githubRepo must be owner/repo or owner@id/repo@id")
@@ -241,7 +241,6 @@ class TennisTrackerStack(Stack):
         role.add_to_policy(  # smoke test: one call to the API function proves its code and layer import
             iam.PolicyStatement(actions=["lambda:InvokeFunction"], resources=[api_fn.function_arn])
         )
-        CfnOutput(self, "ApiFunction", value=api_fn.function_name)
         NagSuppressions.add_resource_suppressions(
             role,
             [

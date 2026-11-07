@@ -235,7 +235,8 @@ class Web(Construct):
             layers=[layer],
             log_group=logs.LogGroup(self, "ApiLogs", retention=logs.RetentionDays.TWO_WEEKS),
         )
-        self.api_fn = fn  # the deploy smoke test invokes it directly
+        self.api_fn: lambda_.Function = fn  # the deploy smoke test invokes it directly
+        CfnOutput(Stack.of(self), "ApiFunction", value=fn.function_name)
         table.grant_read_write_data(fn)
         # The app's own function: a burst of crashes (3 in 5 minutes) emails the alert topic.
         fn.metric_errors(period=Duration.minutes(5)).create_alarm(

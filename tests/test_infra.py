@@ -276,5 +276,6 @@ def test_deploy_role_may_invoke_only_the_api_function() -> None:
         if s["Action"] == "lambda:InvokeFunction"
     ]
     assert len(found) == 1
-    assert "Api" in str(found[0]["Resource"]) and "*" not in str(found[0]["Resource"])
-    template.has_output("ApiFunction", {})
+    function = found[0]["Resource"]["Fn::GetAtt"]  # [logical id, "Arn"]: exactly one function, no wildcard
+    assert function[1] == "Arn" and function[0].startswith("WebApi")
+    template.has_output("ApiFunction", {"Value": {"Ref": function[0]}})
