@@ -1,6 +1,6 @@
 name: Dependabot auto-merge
 
-# Dependabot PRs merge themselves once the required checks pass, and the PRs still open are then rebased.
+# Dependabot PRs merge themselves once the required checks pass, and the Dependabot PRs still open are rebased after any merge into main.
 # Both steps use AUTOMERGE_TOKEN (a fine-grained PAT, stored as an Actions and a Dependabot secret) instead
 # of GITHUB_TOKEN: a merge made by GITHUB_TOKEN starts no push run (so no deploy), and a branch update made
 # by it starts no checks. The token needs Contents, Pull requests, Actions and Workflows write on this repo.
@@ -37,10 +37,13 @@ jobs:
           REPO: ${{ github.repository }}
           ACTION: ${{ github.event.action }}
 
-  # A merge (Dependabot's or ours) leaves the open Dependabot PRs behind main (branch protection wants them up to date). Dependabot
-  # rebases its own PRs, which also starts their checks; `gh pr update-branch` would make it refuse to.
+  # Any merge into main (Dependabot's or ours) leaves open Dependabot PRs behind it, and branch protection wants
+  # them up to date. Dependabot rebases its own PRs, which also starts their checks; `gh pr update-branch`
+  # would make it refuse to.
   rebase-others:
-    if: github.event.action == 'closed' && github.event.pull_request.merged  # any PR: ours leave Dependabot's behind too (#119)
+    if: >-
+      github.event.action == 'closed' && github.event.pull_request.merged
+      && github.event.pull_request.base.ref == github.event.repository.default_branch
     concurrency:
       group: dependabot-rebase  # overlapping merges queue instead of racing each other's rebases
       cancel-in-progress: false
@@ -48,7 +51,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - run: |
-          for pr in $(gh pr list --repo "$REPO" --author 'app/dependabot' --state open --json number --jq '.[].number'); do
+          # Only the ones behind main (UNKNOWN: GitHub has not worked it out yet right after a merge).
+          for pr in $(gh pr list --repo "$REPO" --author 'app/dependabot' --state open --json number,mergeStateStatus --jq '.[]|select(.mergeStateStatus=="BEHIND" or .mergeStateStatus=="UNKNOWN")|.number'); do
             gh pr comment "$pr" --repo "$REPO" --body '@dependabot rebase'
           done
         env:
