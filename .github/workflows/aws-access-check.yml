@@ -1,0 +1,47 @@
+name: AWS access check
+
+# Daily proof that GitHub can still sign in to AWS (the account's GitHub OIDC provider and the deploy role).
+# On 2026-11-06 deleting another stack removed the shared provider and every deploy failed until someone noticed.
+# A failure opens an issue (which emails the repo owner), once, until it is closed.
+
+on:
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 5
+    environment: production   # the role only trusts this environment
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
+          mask-aws-account-id: true  # public repo: logs are public
+          retry-max-attempts: 3
+      - run: aws sts get-caller-identity --query Arn --output text > /dev/null
+  alert:
+    needs: check
+    if: failure()
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - run: |
+          if [ -z "$(gh issue list --repo "$REPO" --state open --search "$TITLE in:title" --json number --jq '.[0].number')" ]; then
+            gh issue create --repo "$REPO" --title "$TITLE" --body "GitHub could not sign in to AWS, so deploys will fail. Check the account's GitHub OIDC provider (token.actions.githubusercontent.com) and the deploy role. $RUN_URL"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TITLE: AWS sign-in from GitHub is failing
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

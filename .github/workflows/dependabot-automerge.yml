@@ -21,7 +21,13 @@ jobs:
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
     timeout-minutes: 5
     steps:
-      - run: gh pr merge --auto --squash "$PR" --repo "$REPO"
+      # A PR that touches the Lambda layer waits for a human: #112 swapped its lockfile and the merged deploy broke the API.
+      - run: |
+          if gh pr diff "$PR" --repo "$REPO" --name-only | grep -q '^layer/'; then
+            gh pr comment "$PR" --repo "$REPO" --body 'Not auto-merging: this changes `layer/`. Check the diff, then merge by hand.'
+          else
+            gh pr merge --auto --squash "$PR" --repo "$REPO"
+          fi
         env:
           GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
