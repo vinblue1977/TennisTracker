@@ -14,3 +14,9 @@
 - When an earlier PR merges, run `gh pr update-branch <n>` on your own PRs still open (branch protection needs them up to date).
 - After a PR merges, delete its branches: `git fetch --prune`, then `git branch -D` every local branch marked `gone` (and any remote branch of a merged PR that GitHub left behind). Never delete a branch with an open PR.
 - If a PR ever merges without a push run on main, deploy with `gh workflow run ci.yml --ref main`.
+
+## Dependabot and the Lambda layer
+
+- `layer/requirements.txt` must only hold what `layer/requirements.in` needs (`tests/test_layer_lock.py` checks it). In #112 Dependabot overwrote it with the CDK packages and the deployed API lost `cryptography`.
+- Layer packages are ignored in the root pip entry of `.github/dependabot.yml`; the `/layer` entry owns them. Add any new layer package to that ignore list.
+- Review every Dependabot PR that touches `layer/`: the diff should be small pin bumps, never a different package set.
