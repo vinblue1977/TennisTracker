@@ -37,12 +37,10 @@ jobs:
           REPO: ${{ github.repository }}
           ACTION: ${{ github.event.action }}
 
-  # A merge leaves the other Dependabot PRs behind main (branch protection wants them up to date). Dependabot
+  # A merge (Dependabot's or ours) leaves the open Dependabot PRs behind main (branch protection wants them up to date). Dependabot
   # rebases its own PRs, which also starts their checks; `gh pr update-branch` would make it refuse to.
   rebase-others:
-    if: >-
-      github.event.action == 'closed' && github.event.pull_request.merged
-      && github.event.pull_request.user.login == 'dependabot[bot]'
+    if: github.event.action == 'closed' && github.event.pull_request.merged  # any PR: ours leave Dependabot's behind too (#119)
     concurrency:
       group: dependabot-rebase  # overlapping merges queue instead of racing each other's rebases
       cancel-in-progress: false
