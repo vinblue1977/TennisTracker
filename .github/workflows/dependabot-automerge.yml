@@ -23,8 +23,11 @@ jobs:
     steps:
       # A PR that touches the Lambda layer waits for a human: #112 swapped its lockfile and the merged deploy broke the API.
       - run: |
-          if gh pr diff "$PR" --repo "$REPO" --name-only | grep -q '^layer/'; then
-            gh pr comment "$PR" --repo "$REPO" --body 'Not auto-merging: this changes `layer/`. Check the diff, then merge by hand.'
+          files="$(gh pr diff "$PR" --repo "$REPO" --name-only)"  # a failure here stops the step: never merge unchecked
+          if printf '%s\n' "$files" | grep -q '^layer/'; then
+            if [ "$ACTION" = opened ]; then  # once, not on every rebase
+              gh pr comment "$PR" --repo "$REPO" --body 'Not auto-merging: this changes `layer/`. Check the diff, then merge by hand.'
+            fi
           else
             gh pr merge --auto --squash "$PR" --repo "$REPO"
           fi
@@ -32,6 +35,7 @@ jobs:
           GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          ACTION: ${{ github.event.action }}
 
   # A merge leaves the other Dependabot PRs behind main (branch protection wants them up to date). Dependabot
   # rebases its own PRs, which also starts their checks; `gh pr update-branch` would make it refuse to.

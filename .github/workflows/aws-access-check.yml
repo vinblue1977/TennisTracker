@@ -37,7 +37,7 @@ jobs:
       issues: write
     steps:
       - run: |
-          if [ -z "$(gh issue list --repo "$REPO" --state open --search "$TITLE in:title" --json number --jq '.[0].number')" ]; then
+          if [ "$(gh issue list --repo "$REPO" --state open --json title --jq '[.[]|select(.title==env.TITLE)]|length')" = 0 ]; then
             gh issue create --repo "$REPO" --title "$TITLE" --body "GitHub could not sign in to AWS, so deploys will fail. Check the account's GitHub OIDC provider (token.actions.githubusercontent.com) and the deploy role. $RUN_URL"
           fi
         env:
