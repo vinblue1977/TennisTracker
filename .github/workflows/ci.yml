@@ -295,4 +295,8 @@ jobs:
             echo "$2 -> $code (want $1)"; [ "$code" = "$1" ]
           }
           check 200 "$site/"
-          check 401 "$api/me/profile"  # sign-in required
+          check 401 "$api/me/profile"  # sign-in required (API Gateway answers this, so it can't see a broken Lambda)
+          # Call the Lambda itself: a missing dependency fails the import (FunctionError), as when the layer lost cryptography.
+          fn="$(jq -er '.TennisTracker.ApiFunction' cdk-outputs.json)"
+          aws lambda invoke --function-name "$fn" --payload '{}' --cli-binary-format raw-in-base64-out --query FunctionError --output text invoke.json | tee invoke.err
+          [ "$(cat invoke.err)" = None ] || { cat invoke.json; exit 1; }
