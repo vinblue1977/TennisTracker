@@ -301,3 +301,21 @@ jobs:
           err="$(aws lambda invoke --function-name "$fn" --payload '{}' --cli-binary-format raw-in-base64-out --query FunctionError --output text invoke.json)"
           echo "$fn FunctionError: $err"
           [ "$err" = None ] || { cat invoke.json; exit 1; }
+
+  # A failed deploy on main would otherwise sit unnoticed in the Actions tab. A new issue emails the repo owner.
+  alert-on-failure:
+    needs: deploy
+    if: always() && needs.deploy.result == 'failure'  # the deploy itself failed, not a skipped or cancelled run
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - run: |
+          open="$(gh issue list --repo "$REPO" --state open --json title --jq '[.[]|select(.title==env.TITLE)]|length')"
+          if [ "$open" = 0 ]; then gh issue create --repo "$REPO" --title "$TITLE" --body "The deploy job failed: $RUN_URL"; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TITLE: Deploy failed on main
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
