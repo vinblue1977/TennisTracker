@@ -263,3 +263,19 @@ def test_files_are_revalidated_by_browsers_and_nothing_is_cached_immutably() -> 
     assert values == ["no-cache"]  # the SPA fallback turns missing files into index.html, so no long caching
     (distribution,) = template.find_resources("AWS::CloudFront::Distribution").values()
     assert "CacheBehaviors" not in distribution["Properties"]["DistributionConfig"]
+
+
+def test_deploy_role_may_invoke_only_the_api_function() -> None:
+    """The deploy smoke test calls the API Lambda itself; nothing wider than that one function."""
+    template = _template()
+    found = [
+        s
+        for policy in template.find_resources("AWS::IAM::Policy").values()
+        if "GitHubDeployRole" in str(policy["Properties"]["Roles"])
+        for s in policy["Properties"]["PolicyDocument"]["Statement"]
+        if s["Action"] == "lambda:InvokeFunction"
+    ]
+    assert len(found) == 1
+    function = found[0]["Resource"]["Fn::GetAtt"]  # [logical id, "Arn"]: exactly one function, no wildcard
+    assert function[1] == "Arn" and function[0].startswith("WebApi")
+    template.has_output("ApiFunction", {"Value": {"Ref": function[0]}})
