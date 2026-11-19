@@ -17,6 +17,7 @@
 
 ## Dependabot and the Lambda layer
 
-- `layer/requirements.txt` must only hold what `layer/requirements.in` needs (`tests/test_layer_lock.py` checks it). In #112 Dependabot overwrote it with the CDK packages and the deployed API lost `cryptography`.
+- `layer/requirements-layer.txt` must only hold what `layer/requirements-layer.in` needs (`tests/test_layer_lock.py` checks it). In #112 Dependabot overwrote it with the CDK packages and the deployed API lost `cryptography`.
+- `layer/requirements-layer.in`/`requirements-layer.txt` have unique names so Dependabot's root run can't mistake them for `requirements.in`/`.txt`, and the `restore-layer` job in `dependabot-automerge.yml` puts main's `layer/requirements-layer.txt` back on any non-layer Dependabot PR (after #112 and #129).
 - Layer packages are ignored in the root pip entry of `.github/dependabot.yml`; the `/layer` entry owns them. Add any new layer package to that ignore list.
 - Review every Dependabot PR that touches `layer/`: the diff should be small pin bumps, never a different package set.

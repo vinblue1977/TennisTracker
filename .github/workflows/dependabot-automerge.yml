@@ -15,9 +15,37 @@ on:
 permissions: {}  # the token below does the work; GITHUB_TOKEN gets nothing
 
 jobs:
+  # Safety net for the layer lockfile: Dependabot's root pip run overwrote layer/ with the CDK packages in #112 and #129.
+  # A PR that is not a layer update (its branch is not dependabot/pip/layer/...) gets layer/requirements-layer.txt put back to main's
+  # copy through the contents API: nothing from the PR is checked out or run, and the bytes come from main. The push
+  # restarts the checks. (Dependabot stops rebasing an edited branch, so `rebase-others` comments `@dependabot recreate` on those instead.)
+  restore-layer:
+    if: >-
+      github.event.action != 'closed' && github.event.pull_request.user.login == 'dependabot[bot]'
+      && !startsWith(github.event.pull_request.head.ref, 'dependabot/pip/layer/')
+    runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
+    timeout-minutes: 5
+    steps:
+      - run: |
+          f=layer/requirements-layer.txt
+          want="$(gh api "repos/$REPO/contents/$f?ref=$BASE" --jq .content | tr -d '\n')"
+          have="$(gh api "repos/$REPO/contents/$f?ref=$HEAD" --jq .content | tr -d '\n')"
+          if [ -n "$want" ] && [ "$want" != "$have" ]; then
+            sha="$(gh api "repos/$REPO/contents/$f?ref=$HEAD" --jq .sha)"
+            gh api -X PUT "repos/$REPO/contents/$f" -f message="fix: keep the Lambda layer lockfile Dependabot overwrote" \
+              -f content="$want" -f sha="$sha" -f branch="$HEAD"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+
   # Turns on auto-merge; GitHub merges when the required checks pass and the branch is up to date.
   enable:
-    if: github.event.action != 'closed' && github.event.pull_request.user.login == 'dependabot[bot]'
+    needs: restore-layer  # so the diff below is read after any lockfile fix-up, not before
+    if: >-
+      !cancelled() && github.event.action != 'closed' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-24.04  # pinned; ubuntu-latest moves to 26 on 2026-10-19
     timeout-minutes: 5
     steps:
@@ -52,8 +80,14 @@ jobs:
     steps:
       - run: |
           # Only the ones behind main (UNKNOWN: GitHub has not worked it out yet right after a merge).
+          # A PR carrying the restore-layer fix-up commit counts as edited, so Dependabot would refuse a rebase: recreate it
+          # (the fix-up is then applied again on the new PR).
           for pr in $(gh pr list --repo "$REPO" --author 'app/dependabot' --state open --json number,mergeStateStatus --jq '.[]|select(.mergeStateStatus=="BEHIND" or .mergeStateStatus=="UNKNOWN")|.number'); do
-            gh pr comment "$pr" --repo "$REPO" --body '@dependabot rebase'
+            if gh pr view "$pr" --repo "$REPO" --json commits --jq '.commits[].messageHeadline' | grep -q 'keep the Lambda layer lockfile'; then
+              gh pr comment "$pr" --repo "$REPO" --body '@dependabot recreate'
+            else
+              gh pr comment "$pr" --repo "$REPO" --body '@dependabot rebase'
+            fi
           done
         env:
           GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
