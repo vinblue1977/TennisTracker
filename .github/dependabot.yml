@@ -31,11 +31,12 @@ updates:
       # cdk-nag 3 replaces the suppression API (experimental, no grouped acknowledgments yet).
       - dependency-name: cdk-nag
         versions: [">=3.0.0"]
-      # Layer packages (layer/requirements.in) belong to the /layer entry below. In #112 this entry tried to bump
-      # tzdata and overwrote layer/requirements.txt with the CDK packages, so the Lambda lost `cryptography`.
+      # Layer packages (layer/requirements-layer.in) belong to the /layer entry below. In #112 and again in #129 this entry overwrote
+      # layer/requirements-layer.txt with the CDK packages (so the Lambda lost `cryptography`), even for bumps of non-layer packages. The layer
+      # files have unique names (requirements-layer.in/requirements-layer.txt) so this entry no longer mistakes them for its own requirements.in/txt.
       - dependency-name: tzdata
       - dependency-name: cryptography
-  # The Lambda layer: requirements.in holds the ranges; Dependabot regenerates the hashed lockfile.
+  # The Lambda layer: requirements-layer.in holds the ranges; Dependabot regenerates the hashed lockfile.
   - package-ecosystem: pip
     directory: /layer
     schedule:

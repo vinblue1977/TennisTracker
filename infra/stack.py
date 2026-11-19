@@ -43,7 +43,7 @@ class TennisTrackerStack(Stack):
         CfnOutput(self, "TableName", value=self.table.table_name)
 
         topic = self._alert_topic()
-        # Locked runtime dependencies (layer/requirements.txt), built by `make layer`.
+        # Locked runtime dependencies (layer/requirements-layer.txt), built by `make layer`.
         layer_dir = self.node.try_get_context("layerDir") or "build/layer"
         if not Path(layer_dir).is_dir():
             raise FileNotFoundError(f"Lambda layer not found at {layer_dir}; run `make layer` first")
@@ -53,7 +53,7 @@ class TennisTrackerStack(Stack):
             code=lambda_.Code.from_asset(layer_dir),
             compatible_runtimes=[lambda_.Runtime.PYTHON_3_14],
             compatible_architectures=[lambda_.Architecture.ARM_64],
-            description="Locked runtime dependencies (layer/requirements.txt)",
+            description="Locked runtime dependencies (layer/requirements-layer.txt)",
         )
         self.push_env = {"VAPID_KEY_PARAM": VAPID_PARAM, "VAPID_SUBJECT": "https://github.com/vinblue1977/TennisTracker"}
         # ITF publishes ratings (and their matches) around Wednesday: sync twice that day, once more Thursday as a safety net.
